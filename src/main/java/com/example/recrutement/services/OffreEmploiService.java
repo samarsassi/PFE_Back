@@ -45,13 +45,18 @@ public class OffreEmploiService implements IOffreEmploiService{
         if (existingOffreEmploi.isPresent()) {
             OffreEmploi offreEmploi = existingOffreEmploi.get();
             // Update properties
+            offreEmploi.setModifiePar(updatedOffreEmploi.getModifiePar());
+            offreEmploi.setDateModification(updatedOffreEmploi.getDateModification());
             offreEmploi.setTitre(updatedOffreEmploi.getTitre());
             offreEmploi.setDescription(updatedOffreEmploi.getDescription());
-            offreEmploi.setDateCreation(updatedOffreEmploi.getDateCreation());
             offreEmploi.setArchive(updatedOffreEmploi.isArchive());
             offreEmploi.setLocalisation(updatedOffreEmploi.getLocalisation());
             offreEmploi.setDateDebut(updatedOffreEmploi.getDateDebut());
-
+            offreEmploi.setContrat(updatedOffreEmploi.getContrat());
+            offreEmploi.setCategories(updatedOffreEmploi.getCategories());
+            offreEmploi.setNiveauExperience(updatedOffreEmploi.getNiveauExperience());
+            offreEmploi.setExigences(updatedOffreEmploi.getExigences());
+            offreEmploi.setSalaire(updatedOffreEmploi.getSalaire());
             // If you need to update the candidatures, you can handle that as well (cascade type is set)
            // offreEmploi.setCandidatures(updatedOffreEmploi.getCandidatures());
 
