@@ -13,8 +13,13 @@ public class Candidature extends BaseEntity {
 
     private String nom;
     private String email;
+    private String telephone;
     private String statut; // EN ATTENTE, ACCEPTÉ, REJETÉ
-    private File cv;
+    @Lob
+    private String cv;
+
+    private String coverLetter;
+
     private int scoreCV;
     private String remarquesRH;
     private String decisionFinale;
@@ -23,6 +28,7 @@ public class Candidature extends BaseEntity {
     @JoinColumn(name = "offre_id")
     @JsonManagedReference //endless loop
     private OffreEmploi offreEmploi;
+
 
     public String getNom() {
         return nom;
@@ -40,6 +46,14 @@ public class Candidature extends BaseEntity {
         this.email = email;
     }
 
+    public String getTelephone() {
+        return telephone;
+    }
+
+    public void setTelephone(String telephone) {
+        this.telephone = telephone;
+    }
+
     public String getStatut() {
         return statut;
     }
@@ -48,12 +62,20 @@ public class Candidature extends BaseEntity {
         this.statut = statut;
     }
 
-    public File getCv() {
+    public String getCv() {
         return cv;
     }
 
-    public void setCv(File cv) {
+    public void setCv(String cv) {
         this.cv = cv;
+    }
+
+    public String getCoverLetter() {
+        return coverLetter;
+    }
+
+    public void setCoverLetter(String coverLetter) {
+        this.coverLetter = coverLetter;
     }
 
     public int getScoreCV() {

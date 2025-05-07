@@ -4,10 +4,14 @@ import com.example.recrutement.entities.Candidature;
 import com.example.recrutement.services.CandidatureService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.util.List;
 
 @RestController
@@ -22,11 +26,58 @@ public class CandidatureController {
     }
 
     // Create a new Candidature (Job application)
-    @PostMapping
-    public ResponseEntity<Candidature> createCandidature(@Valid @RequestBody Candidature candidature,
-                                                         @RequestParam Integer offreEmploiId,
-                                                         Authentication connectedUser) {
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Candidature> createCandidature(
+            @RequestParam("nom") String nom,
+            @RequestParam("email") String email,
+            @RequestParam("phone") String phone,
+            @RequestParam(value = "coverLetter", required = false) String coverLetter,
+            @RequestParam(value = "statut", defaultValue = "EN ATTENTE") String statut,
+            @RequestParam("cv") MultipartFile cv,
+            @RequestParam("offreEmploiId") Integer offreEmploiId,
+            Authentication connectedUser) {
+
+        // Build Candidature object
+        Candidature candidature = new Candidature();
+        candidature.setNom(nom);
+        candidature.setEmail(email);
+        candidature.setTelephone(phone);
+        candidature.setCoverLetter(coverLetter);
+        candidature.setStatut(statut);
+
+        // Save the file
+        String filePath = saveFile(cv);
+        candidature.setCv(filePath);
+
         return ResponseEntity.ok(candidatureService.createCandidature(candidature, offreEmploiId, connectedUser));
+    }
+
+
+
+    private String saveFile(MultipartFile file) {
+        // Set the path to save the file
+        String uploadDirectory = System.getProperty("user.dir") + "/uploads/";
+        File uploadDir = new File(uploadDirectory);
+        if (!uploadDir.exists()) {
+            uploadDir.mkdirs(); // Create the directory if it does not exist
+        }
+
+        // Create a unique filename for the CV
+        String fileName = file.getOriginalFilename();
+        String filePath = uploadDirectory + fileName;
+
+        try {
+            // Save the file to the specified path
+            FileOutputStream fos = new FileOutputStream(filePath);
+            fos.write(file.getBytes());
+            fos.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            // You could throw an exception or return a response indicating failure
+        }
+
+        return filePath; // Return the saved file path
     }
 
     // Get all candidatures
