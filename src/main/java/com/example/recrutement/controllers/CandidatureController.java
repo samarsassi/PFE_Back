@@ -47,8 +47,8 @@ public class CandidatureController {
         candidature.setStatut(statut);
 
         // Save the file
-        String filePath = saveFile(cv);
-        candidature.setCv(filePath);
+        String fileName = saveFile(cv);
+        candidature.setCv(fileName);
 
         return ResponseEntity.ok(candidatureService.createCandidature(candidature, offreEmploiId, connectedUser));
     }
@@ -77,7 +77,7 @@ public class CandidatureController {
             // You could throw an exception or return a response indicating failure
         }
 
-        return filePath; // Return the saved file path
+        return fileName; // Return the saved file path
     }
 
     // Get all candidatures

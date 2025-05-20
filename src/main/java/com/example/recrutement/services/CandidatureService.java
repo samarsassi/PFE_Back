@@ -59,6 +59,7 @@ public class CandidatureService {
             candidature.setScoreCV(updatedCandidature.getScoreCV());
             candidature.setRemarquesRH(updatedCandidature.getRemarquesRH());
             candidature.setDecisionFinale(updatedCandidature.getDecisionFinale());
+            candidature.setCoverLetter(updatedCandidature.getCoverLetter());
             // Ensure the offer is not changed (it's linked already)
             return candidatureRepository.save(candidature);
         } else {

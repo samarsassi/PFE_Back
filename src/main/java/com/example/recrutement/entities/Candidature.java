@@ -1,5 +1,6 @@
 package com.example.recrutement.entities;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,6 +19,8 @@ public class Candidature extends BaseEntity {
     @Lob
     private String cv;
 
+    @Lob
+    @Column(name = "cover_letter", columnDefinition = "TEXT")
     private String coverLetter;
 
     private int scoreCV;
@@ -26,10 +29,10 @@ public class Candidature extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "offre_id")
-    @JsonManagedReference //endless loop
+    @JsonIgnoreProperties("candidatures") // instead of @JsonBackReference
     private OffreEmploi offreEmploi;
 
-
+    //
     public String getNom() {
         return nom;
     }
