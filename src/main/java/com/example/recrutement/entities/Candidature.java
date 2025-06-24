@@ -1,10 +1,8 @@
 package com.example.recrutement.entities;
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.io.File;
+import java.time.LocalDateTime;
 
 
 @Getter
@@ -15,6 +13,9 @@ public class Candidature extends BaseEntity {
     private String nom;
     private String email;
     private String telephone;
+    private String experience;
+    private String linkedInProfile;
+    private String portfolioURL ;
     private String statut; // EN ATTENTE, ACCEPTÉ, REJETÉ
     @Lob
     private String cv;
@@ -32,7 +33,24 @@ public class Candidature extends BaseEntity {
     @JsonIgnoreProperties("candidatures") // instead of @JsonBackReference
     private OffreEmploi offreEmploi;
 
-    //
+    //challenge
+
+    @ManyToOne
+    @JoinColumn(name = "defi_id")
+    @JsonIgnoreProperties("candidatures")
+    private Challenge defi;
+
+    private LocalDateTime defiEnvoyeLe;
+    private LocalDateTime defiTermineLe;
+    private Double scoreDefi;
+
+
+    private StatutDefi statutDefi;
+    public enum StatutDefi {
+        AUCUN, ENVOYE, TERMINE, EVALUE
+    }
+
+
     public String getNom() {
         return nom;
     }
@@ -111,6 +129,70 @@ public class Candidature extends BaseEntity {
 
     public void setOffreEmploi(OffreEmploi offreEmploi) {
         this.offreEmploi = offreEmploi;
+    }
+
+    public String getExperience() {
+        return experience;
+    }
+
+    public void setExperience(String experience) {
+        this.experience = experience;
+    }
+
+    public String getLinkedInProfile() {
+        return linkedInProfile;
+    }
+
+    public void setLinkedInProfile(String linkedInProfile) {
+        this.linkedInProfile = linkedInProfile;
+    }
+
+    public String getPortfolioURL() {
+        return portfolioURL;
+    }
+
+    public void setPortfolioURL(String portfolioURL) {
+        this.portfolioURL = portfolioURL;
+    }
+
+    public Challenge getDefi() {
+        return defi;
+    }
+
+    public void setDefi(Challenge defi) {
+        this.defi = defi;
+    }
+
+    public LocalDateTime getDefiEnvoyeLe() {
+        return defiEnvoyeLe;
+    }
+
+    public void setDefiEnvoyeLe(LocalDateTime defiEnvoyeLe) {
+        this.defiEnvoyeLe = defiEnvoyeLe;
+    }
+
+    public LocalDateTime getDefiTermineLe() {
+        return defiTermineLe;
+    }
+
+    public void setDefiTermineLe(LocalDateTime defiTermineLe) {
+        this.defiTermineLe = defiTermineLe;
+    }
+
+    public Double getScoreDefi() {
+        return scoreDefi;
+    }
+
+    public void setScoreDefi(Double scoreDefi) {
+        this.scoreDefi = scoreDefi;
+    }
+
+    public StatutDefi getStatutDefi() {
+        return statutDefi;
+    }
+
+    public void setStatutDefi(StatutDefi statutDefi) {
+        this.statutDefi = statutDefi;
     }
 }
 

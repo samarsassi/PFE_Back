@@ -24,7 +24,7 @@ public class OffreEmploiService implements IOffreEmploiService{
     // Create a new OffreEmploi
     @Transactional
     public OffreEmploi createOffreEmploi(OffreEmploi offreEmploi, Authentication connectedUser) {
-       // offreEmploi.setCreePar(connectedUser.getName());
+
         return offreEmploiRepository.save(offreEmploi);
     }
     // Get all offres d'emploi
@@ -57,8 +57,6 @@ public class OffreEmploiService implements IOffreEmploiService{
             offreEmploi.setNiveauExperience(updatedOffreEmploi.getNiveauExperience());
             offreEmploi.setExigences(updatedOffreEmploi.getExigences());
             offreEmploi.setSalaire(updatedOffreEmploi.getSalaire());
-            // If you need to update the candidatures, you can handle that as well (cascade type is set)
-           // offreEmploi.setCandidatures(updatedOffreEmploi.getCandidatures());
 
             return offreEmploiRepository.save(offreEmploi);
         } else {

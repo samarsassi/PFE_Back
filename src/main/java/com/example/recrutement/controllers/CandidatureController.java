@@ -2,7 +2,6 @@ package com.example.recrutement.controllers;
 
 import com.example.recrutement.entities.Candidature;
 import com.example.recrutement.services.CandidatureService;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -32,8 +31,10 @@ public class CandidatureController {
             @RequestParam("nom") String nom,
             @RequestParam("email") String email,
             @RequestParam("phone") String phone,
+            @RequestParam("experience") String experience,
             @RequestParam(value = "coverLetter", required = false) String coverLetter,
             @RequestParam(value = "statut", defaultValue = "EN ATTENTE") String statut,
+            @RequestParam(value = "statutDefi", defaultValue = "AUCUN") String statutDefi,
             @RequestParam("cv") MultipartFile cv,
             @RequestParam("offreEmploiId") Integer offreEmploiId,
             Authentication connectedUser) {
@@ -43,8 +44,10 @@ public class CandidatureController {
         candidature.setNom(nom);
         candidature.setEmail(email);
         candidature.setTelephone(phone);
+        candidature.setExperience(experience);
         candidature.setCoverLetter(coverLetter);
         candidature.setStatut(statut);
+        candidature.setStatutDefi(Candidature.StatutDefi.AUCUN);
 
         // Save the file
         String fileName = saveFile(cv);
