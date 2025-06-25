@@ -1,0 +1,9 @@
+Primary (Sidebar Base): #2c3e50 (Dark Blue-Gray)
+
+Accent Blue: #2980b9
+
+Teal Highlight: #1abc9c
+
+Neutral Text / Detail Gray: #7f8c8d
+
+Background: #ecf0f1 (Light Gray)
