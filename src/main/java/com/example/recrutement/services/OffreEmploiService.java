@@ -24,7 +24,7 @@ public class OffreEmploiService implements IOffreEmploiService{
     // Create a new OffreEmploi
     @Transactional
     public OffreEmploi createOffreEmploi(OffreEmploi offreEmploi, Authentication connectedUser) {
-       // offreEmploi.setCreePar(connectedUser.getName());
+
         return offreEmploiRepository.save(offreEmploi);
     }
     // Get all offres d'emploi
@@ -45,15 +45,18 @@ public class OffreEmploiService implements IOffreEmploiService{
         if (existingOffreEmploi.isPresent()) {
             OffreEmploi offreEmploi = existingOffreEmploi.get();
             // Update properties
+            offreEmploi.setModifiePar(updatedOffreEmploi.getModifiePar());
+            offreEmploi.setDateModification(updatedOffreEmploi.getDateModification());
             offreEmploi.setTitre(updatedOffreEmploi.getTitre());
             offreEmploi.setDescription(updatedOffreEmploi.getDescription());
-            offreEmploi.setDateCreation(updatedOffreEmploi.getDateCreation());
             offreEmploi.setArchive(updatedOffreEmploi.isArchive());
             offreEmploi.setLocalisation(updatedOffreEmploi.getLocalisation());
             offreEmploi.setDateDebut(updatedOffreEmploi.getDateDebut());
-
-            // If you need to update the candidatures, you can handle that as well (cascade type is set)
-           // offreEmploi.setCandidatures(updatedOffreEmploi.getCandidatures());
+            offreEmploi.setContrat(updatedOffreEmploi.getContrat());
+            offreEmploi.setCategories(updatedOffreEmploi.getCategories());
+            offreEmploi.setNiveauExperience(updatedOffreEmploi.getNiveauExperience());
+            offreEmploi.setExigences(updatedOffreEmploi.getExigences());
+            offreEmploi.setSalaire(updatedOffreEmploi.getSalaire());
 
             return offreEmploiRepository.save(offreEmploi);
         } else {
