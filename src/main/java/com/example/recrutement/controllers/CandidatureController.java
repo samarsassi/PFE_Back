@@ -1,8 +1,16 @@
 package com.example.recrutement.controllers;
-
 import com.example.recrutement.entities.Candidature;
+import com.example.recrutement.entities.Challenge;
+import com.example.recrutement.repositories.CandidatureRepo;
+import com.example.recrutement.repositories.SoumissionDefiRepo;
 import com.example.recrutement.services.CandidatureService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -11,22 +19,29 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.util.List;
+import java.util.*;
+
 
 @RestController
 @RequestMapping("/candidatures")
 public class CandidatureController {
-
+    private static final Logger log = LoggerFactory.getLogger(CandidatureController.class);
     private final CandidatureService candidatureService;
+    private final CandidatureRepo candidatureRepo;
+    private final SoumissionDefiRepo soumissionDefiRepo;
+    private static final Logger logger = LoggerFactory.getLogger(CandidatureController.class);
 
-    @Autowired
-    public CandidatureController(CandidatureService candidatureService) {
+    public CandidatureController(CandidatureService candidatureService, CandidatureRepo candidatureRepo, SoumissionDefiRepo soumissionDefiRepo) {
         this.candidatureService = candidatureService;
+        this.candidatureRepo = candidatureRepo;
+        this.soumissionDefiRepo = soumissionDefiRepo;
     }
+
 
     // Create a new Candidature (Job application)
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+
     public ResponseEntity<Candidature> createCandidature(
             @RequestParam("nom") String nom,
             @RequestParam("email") String email,
@@ -48,6 +63,7 @@ public class CandidatureController {
         candidature.setCoverLetter(coverLetter);
         candidature.setStatut(statut);
         candidature.setStatutDefi(Candidature.StatutDefi.AUCUN);
+
 
         // Save the file
         String fileName = saveFile(cv);
@@ -83,33 +99,122 @@ public class CandidatureController {
         return fileName; // Return the saved file path
     }
 
-    // Get all candidatures
-    @GetMapping
-    public List<Candidature> getAllCandidatures() {
-        return candidatureService.getAllCandidatures();
+    // Get all candidatures en liste
+    @GetMapping("/ListCandidature")
+    public List<Candidature> getAllCandidaturesList() {
+        return candidatureService.getAllCandidaturesList();
     }
+
+    @GetMapping
+    public ResponseEntity<?> getAllCandidatures(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        try {
+            System.out.println("=== CONTROLLER START ===");
+            System.out.println("Received request - page: " + page + ", size: " + size);
+
+            // Create simple pageable without sorting first
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Candidature> result = candidatureService.getAllCandidatures(pageable);
+
+            // Create a simple response to avoid serialization issues
+            Map<String, Object> response = new HashMap<>();
+            response.put("content", result.getContent());
+            response.put("totalElements", result.getTotalElements());
+            response.put("totalPages", result.getTotalPages());
+            response.put("size", result.getSize());
+            response.put("number", result.getNumber());
+
+            System.out.println("=== CONTROLLER SUCCESS ===");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("=== CONTROLLER ERROR ===");
+            System.err.println("Error message: " + e.getMessage());
+            System.err.println("Error class: " + e.getClass().getSimpleName());
+            if (e.getCause() != null) {
+                System.err.println("Cause: " + e.getCause().getMessage());
+            }
+            e.printStackTrace();
+
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Internal Server Error");
+            errorResponse.put("message", e.getMessage());
+            errorResponse.put("timestamp", new Date().toString());
+
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
+
 
     // Get a candidature by id
     @GetMapping("/{id}")
     public Candidature getCandidatureById(@PathVariable Integer id) {
-        return candidatureService.getCandidatureById(id).orElseThrow(() -> new RuntimeException("Candidature not found"));
+        logger.info("Fetching candidature with ID: {}", id);
+
+        return candidatureService.getCandidatureById(id)
+                .map(candidature -> {
+                    logger.info("Candidature found: {}", candidature.getNom());
+                    return candidature;
+                })
+                .orElseThrow(() -> {
+                    logger.error("Candidature with ID {} not found", id);
+                    return new RuntimeException("Candidature not found");
+                });
     }
+
+
 
     // Update a candidature by id
     @PutMapping("/{id}")
-    public Candidature updateCandidature(@PathVariable Integer id, @RequestBody Candidature updatedCandidature) {
+    public Candidature updateCandidature(@RequestBody Candidature updatedCandidature) {
+        Integer id = updatedCandidature.getId();
+        System.out.println("Updating candidature with ID: " + id + ", statut: " + updatedCandidature.getStatut());
+
         return candidatureService.updateCandidature(id, updatedCandidature);
     }
 
+
+
+
+
     // Delete a candidature by id
     @DeleteMapping("/{id}")
-    public void deleteCandidature(@PathVariable Integer id) {
-        candidatureService.deleteCandidature(id);
+    @Transactional
+    public ResponseEntity<String> deleteCandidature(@PathVariable Integer id) {
+        try {
+            log.info("Before delete - Candidature ID: {}", id);
+
+            // Delete connected SoumissionDefi if mawjouda
+            soumissionDefiRepo.deleteByCandidatureId(id);
+            soumissionDefiRepo.flush();
+
+            // Delete candidature itself
+            candidatureRepo.deleteByIdNative(id);
+            candidatureRepo.flush();
+
+            log.info("After delete - should be gone now");
+
+            return ResponseEntity.ok("Candidature deleted successfully");
+        } catch (Exception e) {
+            log.error("Error deleting candidature: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to delete candidature: " + e.getMessage());
+        }
     }
 
+
+
+
     // Get all candidatures for a specific job offer (OffreEmploi)
-    @GetMapping("/{offreEmploiId}")
-    public List<Candidature> getCandidaturesForOffreEmploi(@PathVariable Integer offreEmploiId) {
-        return candidatureService.getCandidaturesForOffreEmploi(offreEmploiId);
+
+
+    @GetMapping("/{id}/challenge")
+    public Challenge getAssignedChallenge(@PathVariable Integer id) {
+        Candidature candidature = candidatureRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Candidature not found"));
+        return candidature.getDefi();
     }
+
 }

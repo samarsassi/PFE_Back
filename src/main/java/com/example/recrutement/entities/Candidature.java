@@ -1,5 +1,6 @@
 package com.example.recrutement.entities;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -19,6 +20,7 @@ public class Candidature extends BaseEntity {
     private String statut; // EN ATTENTE, ACCEPTÉ, REJETÉ
     @Lob
     private String cv;
+    private String cvUrl;
 
     @Lob
     @Column(name = "cover_letter", columnDefinition = "TEXT")
@@ -40,6 +42,10 @@ public class Candidature extends BaseEntity {
     @JsonIgnoreProperties("candidatures")
     private Challenge defi;
 
+    @OneToOne(mappedBy = "candidature", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private SoumissionDefi soumissionDefi;
+
     private LocalDateTime defiEnvoyeLe;
     private LocalDateTime defiTermineLe;
     private Double scoreDefi;
@@ -49,6 +55,11 @@ public class Candidature extends BaseEntity {
     public enum StatutDefi {
         AUCUN, ENVOYE, TERMINE, EVALUE
     }
+
+    @OneToOne(mappedBy = "candidature", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private Entretien entretien;
+
 
 
     public String getNom() {
@@ -194,5 +205,20 @@ public class Candidature extends BaseEntity {
     public void setStatutDefi(StatutDefi statutDefi) {
         this.statutDefi = statutDefi;
     }
-}
 
+    public SoumissionDefi getSoumissionDefi() {
+        return soumissionDefi;
+    }
+
+    public void setSoumissionDefi(SoumissionDefi soumissionDefi) {
+        this.soumissionDefi = soumissionDefi;
+    }
+
+    public Entretien getEntretien() {
+        return entretien;
+    }
+
+    public void setEntretien(Entretien entretien) {
+        this.entretien = entretien;
+    }
+}

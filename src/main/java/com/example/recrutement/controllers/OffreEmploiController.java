@@ -2,6 +2,7 @@ package com.example.recrutement.controllers;
 
 import com.example.recrutement.entities.Candidature;
 import com.example.recrutement.entities.OffreEmploi;
+import com.example.recrutement.repositories.OffreEmploiRepo;
 import com.example.recrutement.services.OffreEmploiService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -63,5 +65,16 @@ public class OffreEmploiController {
     @GetMapping("/{id}/candidatures")
     public List<Candidature> getCandidaturesForOffreEmploi(@PathVariable Integer id) {
         return offreEmploiService.getCandidaturesForOffreEmploi(id);
+    }
+
+    @GetMapping("/offers/search")
+    public List<OffreEmploi> searchOffers(@RequestParam String keyword) {
+        return offreEmploiService.searchOffers(keyword);
+    }
+
+    @GetMapping("/search")
+    public List<OffreEmploi> searchOffres2(@RequestParam String keyword) {
+        List<String> keywords = Arrays.asList(keyword.split("\\s+")); // split by space
+        return offreEmploiService.searchByKeywords(keywords);
     }
 }

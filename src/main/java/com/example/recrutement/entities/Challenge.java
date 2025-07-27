@@ -1,5 +1,6 @@
 package com.example.recrutement.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -31,6 +32,11 @@ public class Challenge extends BaseEntity {
     @OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = true,fetch = FetchType.EAGER)
     @JsonIgnoreProperties("challenge")
     private List<TestCase> testCases;
+
+    @OneToMany(mappedBy = "defi", fetch = FetchType.LAZY)
+    @JsonIgnore // or use @JsonIgnoreProperties("candidatures") if needed
+    private List<Candidature> candidatures;
+
 
     @Lob
     private String codeDepart;
@@ -126,5 +132,13 @@ public class Challenge extends BaseEntity {
 
     public void setStatut(Statut statut) {
         this.statut = statut;
+    }
+
+    public List<Candidature> getCandidatures() {
+        return candidatures;
+    }
+
+    public void setCandidatures(List<Candidature> candidatures) {
+        this.candidatures = candidatures;
     }
 }

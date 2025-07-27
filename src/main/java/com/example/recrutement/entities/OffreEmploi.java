@@ -39,7 +39,9 @@ public class OffreEmploi extends BaseEntity {
     private List<String> exigences = new ArrayList<>();
 
     private String niveauExperience;
-    private String salaire;
+    @Column(nullable = true)
+    private Double salaire;
+
     private String localisation;
     private Date dateDebut;
     private boolean archive;
@@ -94,11 +96,11 @@ public class OffreEmploi extends BaseEntity {
         this.niveauExperience = niveauExperience;
     }
 
-    public String getSalaire() {
+    public Double getSalaire() {
         return salaire;
     }
 
-    public void setSalaire(String salaire) {
+    public void setSalaire(Double salaire) {
         this.salaire = salaire;
     }
 

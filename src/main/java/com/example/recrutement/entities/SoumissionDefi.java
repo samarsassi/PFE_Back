@@ -1,5 +1,6 @@
 package com.example.recrutement.entities;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -21,10 +22,13 @@ public class SoumissionDefi extends BaseEntity {
     @JsonIgnoreProperties("soumissions")
     private Challenge challenge;
 
-    @ManyToOne
-    @JoinColumn(name = "candidature_id")
-    @JsonIgnoreProperties("soumissions")
+    @OneToOne
+    @JoinColumn(name = "candidature_id", unique = true)
+    @JsonBackReference
     private Candidature candidature;
+
+
+
 
     @Lob
     private String code;
@@ -43,7 +47,7 @@ public class SoumissionDefi extends BaseEntity {
     private StatutSoumission statut;
 
     public enum StatutSoumission {
-        Soumis, En_evaluation, Termine
+        Aucun, Soumis, En_evaluation, Termine
     }
 
 
