@@ -1,9 +1,12 @@
 package com.example.recrutement.controllers;
 import com.example.recrutement.entities.Candidature;
 import com.example.recrutement.entities.Challenge;
+import com.example.recrutement.entities.OffreEmploi;
 import com.example.recrutement.repositories.CandidatureRepo;
 import com.example.recrutement.repositories.SoumissionDefiRepo;
 import com.example.recrutement.services.CandidatureService;
+import com.example.recrutement.services.OffreEmploiService;
+import com.example.recrutement.services.ScoringService;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,48 +32,74 @@ public class CandidatureController {
     private final CandidatureService candidatureService;
     private final CandidatureRepo candidatureRepo;
     private final SoumissionDefiRepo soumissionDefiRepo;
+
+    private final ScoringService scoringService;
+    private final OffreEmploiService offreEmploiService;
     private static final Logger logger = LoggerFactory.getLogger(CandidatureController.class);
 
-    public CandidatureController(CandidatureService candidatureService, CandidatureRepo candidatureRepo, SoumissionDefiRepo soumissionDefiRepo) {
+    public CandidatureController(CandidatureService candidatureService,
+                                 CandidatureRepo candidatureRepo,
+                                 SoumissionDefiRepo soumissionDefiRepo,
+                                 ScoringService scoringService,
+                                 OffreEmploiService offreEmploiService) {
         this.candidatureService = candidatureService;
         this.candidatureRepo = candidatureRepo;
         this.soumissionDefiRepo = soumissionDefiRepo;
+        this.scoringService = scoringService;
+        this.offreEmploiService = offreEmploiService;
     }
 
-
-    // Create a new Candidature (Job application)
-
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-
     public ResponseEntity<Candidature> createCandidature(
             @RequestParam("nom") String nom,
             @RequestParam("email") String email,
             @RequestParam("phone") String phone,
             @RequestParam("experience") String experience,
+            @RequestParam("linkedInProfile") String linkedin,
+            @RequestParam("portfolioURL") String portfolio,
             @RequestParam(value = "coverLetter", required = false) String coverLetter,
             @RequestParam(value = "statut", defaultValue = "EN ATTENTE") String statut,
             @RequestParam(value = "statutDefi", defaultValue = "AUCUN") String statutDefi,
+            @RequestParam(value = "statusEntretien", defaultValue = "AUCUN") String statusEntretien,
             @RequestParam("cv") MultipartFile cv,
+            @RequestParam("cvUrl") String cvUrl,
             @RequestParam("offreEmploiId") Integer offreEmploiId,
             Authentication connectedUser) {
 
-        // Build Candidature object
-        Candidature candidature = new Candidature();
-        candidature.setNom(nom);
-        candidature.setEmail(email);
-        candidature.setTelephone(phone);
-        candidature.setExperience(experience);
-        candidature.setCoverLetter(coverLetter);
-        candidature.setStatut(statut);
-        candidature.setStatutDefi(Candidature.StatutDefi.AUCUN);
+        try {
+            Candidature candidature = new Candidature();
+            candidature.setNom(nom);
+            candidature.setEmail(email);
+            candidature.setTelephone(phone);
+            candidature.setExperience(experience);
+            candidature.setLinkedInProfile(linkedin);
+            candidature.setPortfolioURL(portfolio);
+            candidature.setCoverLetter(coverLetter);
+            candidature.setStatut(statut);
+            candidature.setStatutDefi(Candidature.StatutDefi.valueOf(statutDefi));
+            candidature.setStatutEntretien(Candidature.StatutEnt.AUCUN);
+            candidature.setCvUrl(cvUrl);
 
+            String fileName = saveFile(cv);
+            candidature.setCv(fileName);
 
-        // Save the file
-        String fileName = saveFile(cv);
-        candidature.setCv(fileName);
+            OffreEmploi offre = offreEmploiService.getOffreEmploiById(offreEmploiId)
+                    .orElseThrow(() -> new RuntimeException("OffreEmploi not found with ID: " + offreEmploiId));
 
-        return ResponseEntity.ok(candidatureService.createCandidature(candidature, offreEmploiId, connectedUser));
+            // Create candidature first
+            Candidature savedCandidature = candidatureService.createCandidature(candidature, offreEmploiId, connectedUser);
+
+            // Score asynchronously to avoid blocking the response
+            scoringService.scoreCandidatureAsync(savedCandidature, offre);
+
+            return ResponseEntity.ok(savedCandidature);
+
+        } catch (Exception e) {
+            log.error("Error creating candidature: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
+
 
 
 

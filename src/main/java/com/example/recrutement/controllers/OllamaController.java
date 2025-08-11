@@ -1,6 +1,7 @@
 package com.example.recrutement.controllers;
 import com.example.recrutement.services.OffreEmploiService;
 import com.example.recrutement.services.OllamaService;
+import com.example.recrutement.services.ScoringService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -9,17 +10,20 @@ public class OllamaController {
 
     private final OllamaService ollamaService;
     private final OffreEmploiService offreEmploiService;
-
-    public OllamaController(OllamaService ollamaService, OffreEmploiService offreEmploiService) {
+    private final ScoringService scoringService;
+    public OllamaController(OllamaService ollamaService,
+                            OffreEmploiService offreEmploiService,
+                            ScoringService scoringService) {
         this.ollamaService = ollamaService;
         this.offreEmploiService = offreEmploiService;
+        this.scoringService = scoringService;
     }
 
 
     @PostMapping("/analyze-cv")
     public String analyzeCV(@RequestBody String cvText) {
         String prompt = "Analyze this CV and rate the candidate from 1 to 10 for a backend Java developer position. Provide short reasoning.\nCV: " + cvText;
-        return ollamaService.generateFromPhi(prompt);
+        return ollamaService.generateFromPhi(prompt, 0.8);
     }
 
     @PostMapping("/admin/chat")
@@ -36,14 +40,14 @@ public class OllamaController {
         }
         else {
             // Default: regular AI chat response
-            return ollamaService.generateFromPhi(message);
+            return ollamaService.generateFromPhi(message, 0.8);
         }
     }
 
 
     @PostMapping("/chat")
     public String chat(@RequestBody String userMessage) {
-        return ollamaService.generateFromPhi(userMessage);
+        return ollamaService.generateFromPhi(userMessage, 0.8);
     }
 
 
@@ -56,4 +60,11 @@ public class OllamaController {
 
         return String.format("There are currently %d job offers available. The average salary is %.2f.", offerCount, averageSalary);
     }
+
+    @PostMapping("/score-all")
+    public String scoreAllCvs() {
+        scoringService.scoreAllCvs();
+        return "CV scoring completed.";
+    }
+
 }

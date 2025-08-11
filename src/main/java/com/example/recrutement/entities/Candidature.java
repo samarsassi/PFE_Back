@@ -26,7 +26,10 @@ public class Candidature extends BaseEntity {
     @Column(name = "cover_letter", columnDefinition = "TEXT")
     private String coverLetter;
 
-    private int scoreCV;
+    private Double scoreCV;
+    @Column(length = 10000)
+    private String scoringComment;
+
     private String remarquesRH;
     private String decisionFinale;
 
@@ -56,11 +59,14 @@ public class Candidature extends BaseEntity {
         AUCUN, ENVOYE, TERMINE, EVALUE
     }
 
-    @OneToOne(mappedBy = "candidature", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "candidature", cascade = CascadeType.ALL, orphanRemoval = true, optional = true)
     @JsonManagedReference
     private Entretien entretien;
 
-
+    private StatutEnt statutEntretien;
+    public enum StatutEnt {
+        AUCUN, ENVOYE, TERMINE, NON_CONCLUANT
+    }
 
     public String getNom() {
         return nom;
@@ -110,11 +116,11 @@ public class Candidature extends BaseEntity {
         this.coverLetter = coverLetter;
     }
 
-    public int getScoreCV() {
+    public Double getScoreCV() {
         return scoreCV;
     }
 
-    public void setScoreCV(int scoreCV) {
+    public void setScoreCV(Double scoreCV) {
         this.scoreCV = scoreCV;
     }
 
@@ -220,5 +226,29 @@ public class Candidature extends BaseEntity {
 
     public void setEntretien(Entretien entretien) {
         this.entretien = entretien;
+    }
+
+    public String getCvUrl() {
+        return cvUrl;
+    }
+
+    public void setCvUrl(String cvUrl) {
+        this.cvUrl = cvUrl;
+    }
+
+    public StatutEnt getStatutEntretien() {
+        return statutEntretien;
+    }
+
+    public void setStatutEntretien(StatutEnt statutEntretien) {
+        this.statutEntretien = statutEntretien;
+    }
+
+    public String getScoringComment() {
+        return scoringComment;
+    }
+
+    public void setScoringComment(String scoringComment) {
+        this.scoringComment = scoringComment;
     }
 }

@@ -5,9 +5,8 @@ import com.example.recrutement.entities.OffreEmploi;
 import com.example.recrutement.repositories.OffreEmploiRepo;
 import com.example.recrutement.services.OffreEmploiService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
@@ -18,11 +17,13 @@ import java.util.List;
 public class OffreEmploiController {
 
     private final OffreEmploiService offreEmploiService;
+    private final OffreEmploiRepo offreEmploiRepo;
 
-    @Autowired
-    public OffreEmploiController(OffreEmploiService offreEmploiService) {
+    public OffreEmploiController(OffreEmploiService offreEmploiService, OffreEmploiRepo offreEmploiRepo) {
         this.offreEmploiService = offreEmploiService;
+        this.offreEmploiRepo = offreEmploiRepo;
     }
+
 
     //@PreAuthorize("hasRole('admin')")
     @PostMapping
@@ -30,6 +31,16 @@ public class OffreEmploiController {
         System.out.println("Authenticated User: " + (connectedUser != null ? connectedUser.getName() : "Not authenticated"));
         return ResponseEntity.ok(offreEmploiService.createOffreEmploi(offreEmploi, connectedUser));
     }
+
+
+    // Update existing OffreEmploi by ID
+    @PutMapping("/{id}")
+    public ResponseEntity<OffreEmploi> updateOffreEmploi(@PathVariable Integer id, @RequestBody OffreEmploi updatedOffreEmploi) {
+        OffreEmploi updated = offreEmploiService.updateOffreEmploi(id, updatedOffreEmploi);
+        return ResponseEntity.ok(updated);
+    }
+
+
 
     @GetMapping("/OffresEmplois")
     //@PreAuthorize("hasRole('User') or hasRole('ADMIN')")
@@ -42,10 +53,6 @@ public class OffreEmploiController {
         return offreEmploiService.getOffreEmploiById(id).orElseThrow(() -> new RuntimeException("OffreEmploi not found"));
     }
 
-    @PutMapping("/{id}")
-    public OffreEmploi updateOffreEmploi(@PathVariable Integer id, @RequestBody OffreEmploi updatedOffreEmploi) {
-        return offreEmploiService.updateOffreEmploi(id, updatedOffreEmploi);
-    }
 
     @DeleteMapping("/{id}")
     public void deleteOffreEmploi(@PathVariable Integer id) {
