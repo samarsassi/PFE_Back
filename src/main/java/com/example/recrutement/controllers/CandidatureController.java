@@ -8,8 +8,10 @@ import com.example.recrutement.services.CandidatureService;
 import com.example.recrutement.services.OffreEmploiService;
 import com.example.recrutement.services.ScoringService;
 import jakarta.transaction.Transactional;
+import org.flowable.engine.RuntimeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +30,9 @@ import java.util.*;
 @RestController
 @RequestMapping("/candidatures")
 public class CandidatureController {
+    @Autowired
+    private RuntimeService runtimeService;
+
     private static final Logger log = LoggerFactory.getLogger(CandidatureController.class);
     private final CandidatureService candidatureService;
     private final CandidatureRepo candidatureRepo;
@@ -89,8 +94,12 @@ public class CandidatureController {
             // Create candidature first
             Candidature savedCandidature = candidatureService.createCandidature(candidature, offreEmploiId, connectedUser);
 
-            // Score asynchronously to avoid blocking the response
-            scoringService.scoreCandidatureAsync(savedCandidature, offre);
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("candidatureId", savedCandidature.getId());
+            variables.put("offreEmploiId", offreEmploiId);
+
+            // runtimeService.startProcessInstanceByKey("recruitmentProcess", variables);
+
 
             return ResponseEntity.ok(savedCandidature);
 

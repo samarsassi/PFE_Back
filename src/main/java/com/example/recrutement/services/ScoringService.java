@@ -19,7 +19,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
-@Slf4j
 public class ScoringService {
 
     private final CandidatureRepo candidatureRepo;
