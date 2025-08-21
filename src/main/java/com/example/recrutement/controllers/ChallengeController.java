@@ -17,8 +17,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-
-
 @RestController
 @RequestMapping("/challenges")
 public class ChallengeController {
@@ -33,11 +31,11 @@ public class ChallengeController {
     private final TestCaseRepo testCaseRepo;
 
     public ChallengeController(ChallengeService challengeService,
-                               EmailService emailService,
-                               ChallengeRepo challengeRepo,
-                               CandidatureRepo candidatureRepo,
-                               SoumissionDefiRepo soumissionDefiRepo,
-                               TestCaseRepo testCaseRepo) {
+            EmailService emailService,
+            ChallengeRepo challengeRepo,
+            CandidatureRepo candidatureRepo,
+            SoumissionDefiRepo soumissionDefiRepo,
+            TestCaseRepo testCaseRepo) {
         this.challengeService = challengeService;
         this.emailService = emailService;
         this.challengeRepo = challengeRepo;
@@ -45,7 +43,6 @@ public class ChallengeController {
         this.soumissionDefiRepo = soumissionDefiRepo;
         this.testCaseRepo = testCaseRepo;
     }
-
 
     @GetMapping
     public List<Challenge> getAllChallenges() {
@@ -70,7 +67,8 @@ public class ChallengeController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Challenge> updateChallenge(@PathVariable Integer id, @RequestBody Challenge updatedChallenge) {
+    public ResponseEntity<Challenge> updateChallenge(@PathVariable Integer id,
+            @RequestBody Challenge updatedChallenge) {
         return challengeService.findById(id)
                 .map(existingChallenge -> {
                     // Detach old test cases
@@ -101,14 +99,12 @@ public class ChallengeController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteChallenge(@PathVariable Integer id) {
         log.info("-------- {}", id);
 
-     Challenge challenge = challengeRepo.findById(id)
+        Challenge challenge = challengeRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Challenge not found"));
-
 
         List<Candidature> linkedCandidatures = candidatureRepo.findByDefi(challenge);
         for (Candidature c : linkedCandidatures) {
@@ -127,7 +123,7 @@ public class ChallengeController {
             testCaseRepo.delete(t);
         }
 
-        log.info("challenge is .......... {}",challenge);
+        log.info("challenge is .......... {}", challenge);
 
         // Step 2: Now delete the challenge safely
         challengeRepo.delete(challenge);
@@ -136,21 +132,21 @@ public class ChallengeController {
     }
 
     @PostMapping("/{candidatureId}/send-challenge/{challengeId}")
-    public ResponseEntity<Map<String, String>> sendChallengeToCandidate(@PathVariable Integer candidatureId, @PathVariable Integer challengeId) {
+    public ResponseEntity<Map<String, String>> sendChallengeToCandidate(@PathVariable Integer candidatureId,
+            @PathVariable Integer challengeId) {
 
         Candidature candidature = candidatureRepo.findById(candidatureId)
                 .orElseThrow(() -> new RuntimeException("Candidature not found"));
         Challenge challenge = challengeRepo.findById(challengeId)
                 .orElseThrow(() -> new RuntimeException("Challenge not found"));
 
-
-        //Update  lel Candidature with challenge info
+        // Update lel Candidature with challenge info
         candidature.setDefi(challenge);
         candidature.setDefiEnvoyeLe(LocalDateTime.now());
         candidature.setStatutDefi(Candidature.StatutDefi.ENVOYE);
         candidatureRepo.save(candidature);
 
-        //Create SoumissionDefi entry
+        // Create SoumissionDefi entry
         SoumissionDefi soumission = new SoumissionDefi();
         soumission.setChallenge(challenge);
         soumission.setCandidature(candidature);
@@ -159,19 +155,19 @@ public class ChallengeController {
         candidature.setSoumissionDefi(soumission);
         soumissionDefiRepo.save(soumission);
 
-        //email
-         String emailBody = emailService.buildChallengeAssignmentEmail(
-            candidature.getNom(),
-          challenge.getTitre(),
-          "http://localhost:4200/main"
-         );
+        // email
+        String emailBody = emailService.buildChallengeAssignmentEmail(
+                candidature.getNom(),
+                challenge.getTitre(),
+                "http://localhost:4200/main");
 
-         try {
-            emailService.sendHtmlEmail(candidature.getEmail(), "Nouveau défi technique attribué", emailBody); }
-         catch (MessagingException e) { e.printStackTrace();}
+        try {
+            emailService.sendHtmlEmail(candidature.getEmail(), "Nouveau défi technique attribué", emailBody);
+        } catch (MessagingException e) {
+            e.printStackTrace();
+        }
 
         return ResponseEntity.ok(Map.of("message", "Challenge assigned and notification sent"));
     }
-
 
 }

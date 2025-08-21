@@ -2,36 +2,50 @@
 <bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:flowable="http://flowable.org/bpmn" targetNamespace="http://www.flowable.org/processdef">
   <bpmn:process id="Process_1" isExecutable="true">
     <bpmn:startEvent id="StartEvent_1">
-      <bpmn:outgoing>Flow_0dsgmjf</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0i7ka86</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:sequenceFlow id="Flow_0dsgmjf" sourceRef="StartEvent_1" targetRef="Activity_1y7y8p1" />
-    <bpmn:serviceTask id="Activity_1y7y8p1" flowable:delegateExpression="${cvAnalysisDelegate}">
-      <bpmn:incoming>Flow_0dsgmjf</bpmn:incoming>
-      <bpmn:outgoing>Flow_0dm4420</bpmn:outgoing>
+    <bpmn:sequenceFlow id="Flow_0i7ka86" sourceRef="StartEvent_1" targetRef="Activity_0rwja8o" />
+    <bpmn:serviceTask id="Activity_0rwja8o" name="test" flowable:delegateExpression="${emailDelegate}">
+      <bpmn:incoming>Flow_0i7ka86</bpmn:incoming>
+      <bpmn:outgoing>Flow_1dirpr4</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:endEvent id="Event_0o87mjl">
-      <bpmn:incoming>Flow_0dm4420</bpmn:incoming>
+    <bpmn:sequenceFlow id="Flow_1dirpr4" sourceRef="Activity_0rwja8o" targetRef="Activity_12urvsw" />
+    <bpmn:serviceTask id="Activity_12urvsw" name="test" flowable:delegateExpression="${sendChallengeDelegate}">
+      <bpmn:incoming>Flow_1dirpr4</bpmn:incoming>
+      <bpmn:outgoing>Flow_0ep79wo</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="Event_13tf8ru">
+      <bpmn:incoming>Flow_0ep79wo</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:sequenceFlow id="Flow_0dm4420" sourceRef="Activity_1y7y8p1" targetRef="Event_0o87mjl" />
+    <bpmn:sequenceFlow id="Flow_0ep79wo" sourceRef="Activity_12urvsw" targetRef="Event_13tf8ru" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
       <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
-        <dc:Bounds x="42" y="202" width="36" height="36" />
+        <dc:Bounds x="62" y="192" width="36" height="36" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Activity_0zku1np_di" bpmnElement="Activity_1y7y8p1">
-        <dc:Bounds x="130" y="180" width="100" height="80" />
+      <bpmndi:BPMNShape id="Activity_15ky3ye_di" bpmnElement="Activity_0rwja8o">
+        <dc:Bounds x="150" y="170" width="100" height="80" />
+        <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Event_0o87mjl_di" bpmnElement="Event_0o87mjl">
-        <dc:Bounds x="282" y="202" width="36" height="36" />
+      <bpmndi:BPMNShape id="Event_13tf8ru_di" bpmnElement="Event_13tf8ru">
+        <dc:Bounds x="632" y="192" width="36" height="36" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="Flow_0dsgmjf_di" bpmnElement="Flow_0dsgmjf">
-        <di:waypoint x="78" y="220" />
-        <di:waypoint x="130" y="220" />
+      <bpmndi:BPMNShape id="Activity_0v0vvtc_di" bpmnElement="Activity_12urvsw">
+        <dc:Bounds x="440" y="170" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0i7ka86_di" bpmnElement="Flow_0i7ka86">
+        <di:waypoint x="98" y="210" />
+        <di:waypoint x="150" y="210" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_0dm4420_di" bpmnElement="Flow_0dm4420">
-        <di:waypoint x="230" y="220" />
-        <di:waypoint x="282" y="220" />
+      <bpmndi:BPMNEdge id="Flow_1dirpr4_di" bpmnElement="Flow_1dirpr4">
+        <di:waypoint x="250" y="210" />
+        <di:waypoint x="440" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0ep79wo_di" bpmnElement="Flow_0ep79wo">
+        <di:waypoint x="540" y="210" />
+        <di:waypoint x="632" y="210" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

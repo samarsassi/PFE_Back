@@ -38,7 +38,7 @@ public class SoumissionDefi extends BaseEntity {
     private LocalDateTime soumisLe;
 
     @Lob
-    private String resultatsExecution; // or consider a @Convert for JSON
+    private String resultatsExecution;
 
     private double score;
     private int pointsTotal;

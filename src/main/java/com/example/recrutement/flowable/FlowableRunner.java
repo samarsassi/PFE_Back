@@ -18,24 +18,37 @@ public class FlowableRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        var deployments = repositoryService.createDeploymentQuery()
-                .deploymentName("Dynamic Workflow")
-                .orderByDeploymentTime()
-                .desc()
-                .list();
+        try {
+            // Check if there are any deployed process definitions
+            var processDefinitions = repositoryService.createProcessDefinitionQuery()
+                    .list();
 
-        if (!deployments.isEmpty()) {
-            var latestDeployment = deployments.get(0);
+            if (processDefinitions.isEmpty()) {
+                System.out.println("No process definitions found. Skipping automatic process start.");
+                return;
+            }
+
+            // Get the latest deployed process definition
             var processDefinition = repositoryService.createProcessDefinitionQuery()
-                    .deploymentId(latestDeployment.getId())
-                    .singleResult();
+                    .orderByProcessDefinitionVersion()
+                    .desc()
+                    .list()
+                    .get(0);
 
             if (processDefinition != null) {
-                runtimeService.startProcessInstanceById(processDefinition.getId());
-                System.out.println("Dynamic Flowable process started!");
+                System.out.println("Process definition found: " + processDefinition.getId() +
+                        " (version: " + processDefinition.getVersion() + ")");
+                System.out.println(
+                        "Automatic process starting is disabled. Use /api/workflows/start to start processes manually.");
+
+                // Commented out automatic process starting to prevent errors
+                // runtimeService.startProcessInstanceById(processDefinition.getId());
+                // System.out.println("Dynamic Flowable process started from deployment: " +
+                // processDefinition.getDeploymentId());
             }
-        } else {
-            System.out.println("No workflow deployed yet.");
+        } catch (Exception e) {
+            System.err.println("Error during Flowable startup check: " + e.getMessage());
+            // Don't throw the exception to prevent application startup failure
         }
     }
 }

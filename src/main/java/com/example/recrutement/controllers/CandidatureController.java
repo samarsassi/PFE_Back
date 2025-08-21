@@ -1,4 +1,5 @@
 package com.example.recrutement.controllers;
+
 import com.example.recrutement.entities.Candidature;
 import com.example.recrutement.entities.Challenge;
 import com.example.recrutement.entities.OffreEmploi;
@@ -26,7 +27,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.util.*;
 
-
 @RestController
 @RequestMapping("/candidatures")
 public class CandidatureController {
@@ -43,10 +43,10 @@ public class CandidatureController {
     private static final Logger logger = LoggerFactory.getLogger(CandidatureController.class);
 
     public CandidatureController(CandidatureService candidatureService,
-                                 CandidatureRepo candidatureRepo,
-                                 SoumissionDefiRepo soumissionDefiRepo,
-                                 ScoringService scoringService,
-                                 OffreEmploiService offreEmploiService) {
+            CandidatureRepo candidatureRepo,
+            SoumissionDefiRepo soumissionDefiRepo,
+            ScoringService scoringService,
+            OffreEmploiService offreEmploiService) {
         this.candidatureService = candidatureService;
         this.candidatureRepo = candidatureRepo;
         this.soumissionDefiRepo = soumissionDefiRepo;
@@ -92,14 +92,14 @@ public class CandidatureController {
                     .orElseThrow(() -> new RuntimeException("OffreEmploi not found with ID: " + offreEmploiId));
 
             // Create candidature first
-            Candidature savedCandidature = candidatureService.createCandidature(candidature, offreEmploiId, connectedUser);
+            Candidature savedCandidature = candidatureService.createCandidature(candidature, offreEmploiId,
+                    connectedUser);
 
             Map<String, Object> variables = new HashMap<>();
             variables.put("candidatureId", savedCandidature.getId());
             variables.put("offreEmploiId", offreEmploiId);
 
             // runtimeService.startProcessInstanceByKey("recruitmentProcess", variables);
-
 
             return ResponseEntity.ok(savedCandidature);
 
@@ -108,9 +108,6 @@ public class CandidatureController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
-
-
 
     private String saveFile(MultipartFile file) {
         // Set the path to save the file
@@ -185,7 +182,6 @@ public class CandidatureController {
         }
     }
 
-
     // Get a candidature by id
     @GetMapping("/{id}")
     public Candidature getCandidatureById(@PathVariable Integer id) {
@@ -202,8 +198,6 @@ public class CandidatureController {
                 });
     }
 
-
-
     // Update a candidature by id
     @PutMapping("/{id}")
     public Candidature updateCandidature(@RequestBody Candidature updatedCandidature) {
@@ -212,10 +206,6 @@ public class CandidatureController {
 
         return candidatureService.updateCandidature(id, updatedCandidature);
     }
-
-
-
-
 
     // Delete a candidature by id
     @DeleteMapping("/{id}")
@@ -242,11 +232,7 @@ public class CandidatureController {
         }
     }
 
-
-
-
     // Get all candidatures for a specific job offer (OffreEmploi)
-
 
     @GetMapping("/{id}/challenge")
     public Challenge getAssignedChallenge(@PathVariable Integer id) {
@@ -255,4 +241,41 @@ public class CandidatureController {
         return candidature.getDefi();
     }
 
+    @PostMapping("/{id}/submit-challenge")
+    public ResponseEntity<?> submitChallenge(@PathVariable Integer id,
+            @RequestBody com.example.recrutement.dto.ChallengeSubmissionDTO payload) {
+        var candidatureOpt = candidatureRepo.findById(id);
+        if (candidatureOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var candidature = candidatureOpt.get();
+        if (candidature.getDefi() == null) {
+            return ResponseEntity.badRequest().body("No challenge assigned to this candidature");
+        }
+        var soumission = candidature.getSoumissionDefi();
+        if (soumission == null) {
+            soumission = new com.example.recrutement.entities.SoumissionDefi();
+            soumission.setCandidature(candidature);
+            soumission.setChallenge(candidature.getDefi());
+        }
+        soumission.setCode(payload.getCode());
+        soumission.setLangage(payload.getLangage());
+        soumission.setResultatsExecution(payload.getResultatsExecution());
+        soumission.setSoumisLe(java.time.LocalDateTime.now());
+        soumission.setPointsTotal(payload.getPointsTotal() != null ? payload.getPointsTotal() : 0);
+        soumission.setScore(payload.getScore() != null ? payload.getScore() : 0);
+        soumission.setStatut(com.example.recrutement.entities.SoumissionDefi.StatutSoumission.Termine);
+        soumissionDefiRepo.save(soumission);
+        candidature.setSoumissionDefi(soumission);
+
+        candidature.setDefiTermineLe(java.time.LocalDateTime.now());
+        candidature.setScoreDefi(payload.getScore());
+        candidature.setStatutDefi(com.example.recrutement.entities.Candidature.StatutDefi.TERMINE);
+        candidatureRepo.save(candidature);
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "message", "Submission recorded",
+                "score", payload.getScore(),
+                "pointsTotal", payload.getPointsTotal()));
+    }
 }
