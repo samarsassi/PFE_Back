@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -52,6 +53,19 @@ public class WorkflowService {
     }
 
     /**
+     * Remove UTF-8 BOM and any leading whitespace/newlines before the XML declaration.
+     * Ensures the content starts exactly with "<?xml" so Flowable's parser accepts it.
+     */
+    private String sanitizeXml(String xml) {
+        if (xml == null) return null;
+        // Remove UTF-8 BOM if present
+        String cleaned = xml.replaceFirst("^\uFEFF", "");
+        // Trim leading whitespace/newlines before XML declaration
+        cleaned = cleaned.replaceFirst("^\\s+", "");
+        return cleaned;
+    }
+
+    /**
      * Validate that all service tasks have proper delegate expressions
      */
     private void validateServiceTaskDelegates(String bpmnXml) {
@@ -85,31 +99,29 @@ public class WorkflowService {
     }
 
     public void deployAndStartWorkflow(String bpmnXml) {
-        // Validate the XML first
-        validateBpmnXml(bpmnXml);
+        // Sanitize and validate the XML first
+        String cleanXml = sanitizeXml(bpmnXml);
+        validateBpmnXml(cleanXml);
 
+        // Persist BPMN into classpath resources so it's the single source of truth
         try {
-            // Save BPMN to resources folder for backup/debugging
             Path resourcesPath = Paths.get("src/main/resources/processes");
             if (!Files.exists(resourcesPath)) {
                 Files.createDirectories(resourcesPath);
             }
-
-            Path bpmnFile = resourcesPath.resolve("Dynamic_Workflow.bpmn20.xml");
-            Files.write(bpmnFile, bpmnXml.getBytes(),
+            Path bpmnFile = resourcesPath.resolve("Recruitment_Workflow.bpmn20.xml");
+            Files.write(bpmnFile, cleanXml.getBytes(StandardCharsets.UTF_8),
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING);
-
             System.out.println("BPMN XML saved to: " + bpmnFile.toAbsolutePath());
         } catch (IOException e) {
             System.err.println("Failed to save BPMN file: " + e.getMessage());
-            // Continue with deployment even if file save fails
         }
 
         try {
             // Delete all previous deployments to ensure only the latest is used
             var existingDeployments = repositoryService.createDeploymentQuery()
-                    .deploymentName("Dynamic Workflow")
+                    .deploymentName("Static Recruitment Workflow")
                     .list();
 
             for (Deployment deployment : existingDeployments) {
@@ -119,8 +131,8 @@ public class WorkflowService {
 
             // Deploy the new workflow
             Deployment newDeployment = repositoryService.createDeployment()
-                    .addString("Dynamic_Workflow.bpmn20.xml", bpmnXml)
-                    .name("Dynamic Workflow")
+                    .addString("Recruitment_Workflow.bpmn20.xml", cleanXml)
+                    .name("Static Recruitment Workflow")
                     .deploy();
 
             System.out.println("New deployment created: " + newDeployment.getId());
@@ -157,21 +169,20 @@ public class WorkflowService {
      * Deploy workflow without starting a process instance
      */
     public void deployWorkflowOnly(String bpmnXml) {
-        // Validate the XML first
-        validateBpmnXml(bpmnXml);
+        // Sanitize and validate the XML first
+        String cleanXml = sanitizeXml(bpmnXml);
+        validateBpmnXml(cleanXml);
 
+        // Persist BPMN into classpath resources so it's the single source of truth
         try {
-            // Save BPMN to resources folder for backup/debugging
             Path resourcesPath = Paths.get("src/main/resources/processes");
             if (!Files.exists(resourcesPath)) {
                 Files.createDirectories(resourcesPath);
             }
-
-            Path bpmnFile = resourcesPath.resolve("Dynamic_Workflow.bpmn20.xml");
-            Files.write(bpmnFile, bpmnXml.getBytes(),
+            Path bpmnFile = resourcesPath.resolve("Recruitment_Workflow.bpmn20.xml");
+            Files.write(bpmnFile, cleanXml.getBytes(StandardCharsets.UTF_8),
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING);
-
             System.out.println("BPMN XML saved to: " + bpmnFile.toAbsolutePath());
         } catch (IOException e) {
             System.err.println("Failed to save BPMN file: " + e.getMessage());
@@ -180,7 +191,7 @@ public class WorkflowService {
         try {
             // Delete all previous deployments to ensure only the latest is used
             var existingDeployments = repositoryService.createDeploymentQuery()
-                    .deploymentName("Dynamic Workflow")
+                    .deploymentName("Static Recruitment Workflow")
                     .list();
 
             for (Deployment deployment : existingDeployments) {
@@ -190,8 +201,8 @@ public class WorkflowService {
 
             // Deploy the new workflow
             Deployment newDeployment = repositoryService.createDeployment()
-                    .addString("Dynamic_Workflow.bpmn20.xml", bpmnXml)
-                    .name("Dynamic Workflow")
+                    .addString("Recruitment_Workflow.bpmn20.xml", cleanXml)
+                    .name("Static Recruitment Workflow")
                     .deploy();
 
             System.out.println("New deployment created: " + newDeployment.getId());
@@ -245,6 +256,40 @@ public class WorkflowService {
             }
         } else {
             throw new RuntimeException("No process definition found to start");
+        }
+    }
+
+    /**
+     * Start a process instance of the latest deployed definition with given variables
+     */
+    public void startLatestProcessWithVariables(Map<String, Object> variables) {
+        String processDefinitionId = getLatestProcessDefinitionId();
+        if (processDefinitionId != null) {
+            try {
+                runtimeService.startProcessInstanceById(processDefinitionId, variables != null ? variables : new HashMap<>());
+                System.out.println("Started process instance with variables for definition: " + processDefinitionId);
+            } catch (Exception e) {
+                System.err.println("Failed to start process instance with variables: " + e.getMessage());
+                throw new RuntimeException("Failed to start process instance with variables", e);
+            }
+        } else {
+            throw new RuntimeException("No process definition found to start");
+        }
+    }
+
+    /**
+     * Start a process instance by process definition key with given variables
+     */
+    public void startProcessByKeyWithVariables(String processKey, Map<String, Object> variables) {
+        if (processKey == null || processKey.isBlank()) {
+            throw new IllegalArgumentException("processKey is required");
+        }
+        try {
+            runtimeService.startProcessInstanceByKey(processKey, variables != null ? variables : new HashMap<>());
+            System.out.println("Started process instance by key: " + processKey);
+        } catch (Exception e) {
+            System.err.println("Failed to start process by key '" + processKey + "': " + e.getMessage());
+            throw new RuntimeException("Failed to start process by key", e);
         }
     }
 

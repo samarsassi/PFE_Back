@@ -34,8 +34,20 @@ public class SendChallengeDelegate implements JavaDelegate {
 
         Candidature candidature = candidatureRepo.findById(candidatureId)
                 .orElseThrow(() -> new RuntimeException("Candidature not found"));
-        Challenge challenge = challengeRepo.findById(challengeId)
-                .orElseThrow(() -> new RuntimeException("Challenge not found"));
+        // Fallbacks when variables are not provided
+        if (candidateEmail == null || candidateEmail.isBlank()) {
+            candidateEmail = candidature.getEmail();
+        }
+
+        Challenge challenge;
+        if (challengeId != null) {
+            challenge = challengeRepo.findById(challengeId)
+                    .orElseThrow(() -> new RuntimeException("Challenge not found"));
+        } else {
+            // Pick any active challenge as a default (simple heuristic)
+            challenge = challengeRepo.findAll().stream().findFirst()
+                    .orElseThrow(() -> new RuntimeException("No challenge available to assign"));
+        }
 
         // Update candidature with challenge
         candidature.setDefi(challenge);

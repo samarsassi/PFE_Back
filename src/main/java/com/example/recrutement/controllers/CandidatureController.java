@@ -98,8 +98,16 @@ public class CandidatureController {
             Map<String, Object> variables = new HashMap<>();
             variables.put("candidatureId", savedCandidature.getId());
             variables.put("offreEmploiId", offreEmploiId);
+            // Prefer taking candidate email from saved entity
+            variables.put("candidateEmail", savedCandidature.getEmail());
+            // Optional vars; user tasks can have null assignees if not configured
+            // You can set these via configuration or offer owner later
+            // variables.put("hrEmail", "hr@example.com");
+            // variables.put("interviewerEmail", "interviewer@example.com");
 
-            // runtimeService.startProcessInstanceByKey("recruitmentProcess", variables);
+            // Start the workflow automatically with available variables
+            // Key matches the current BPMN process id used in deployments
+            runtimeService.startProcessInstanceByKey("Process_1", variables);
 
             return ResponseEntity.ok(savedCandidature);
 
