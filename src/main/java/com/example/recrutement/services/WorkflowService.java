@@ -1,5 +1,6 @@
 package com.example.recrutement.services;
 
+import com.example.recrutement.entities.WorkflowCondition;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.repository.Deployment;
@@ -12,17 +13,22 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class WorkflowService {
 
     private final RepositoryService repositoryService;
     private final RuntimeService runtimeService;
+    private final WorkflowConditionService conditionService;
 
-    public WorkflowService(RepositoryService repositoryService, RuntimeService runtimeService) {
+    public WorkflowService(RepositoryService repositoryService, RuntimeService runtimeService, WorkflowConditionService conditionService) {
         this.repositoryService = repositoryService;
         this.runtimeService = runtimeService;
+        this.conditionService = conditionService;
     }
 
     /**
@@ -101,6 +107,10 @@ public class WorkflowService {
     public void deployAndStartWorkflow(String bpmnXml) {
         // Sanitize and validate the XML first
         String cleanXml = sanitizeXml(bpmnXml);
+        
+        // Apply workflow conditions before validation and deployment
+        cleanXml = applyWorkflowConditions(cleanXml);
+        
         validateBpmnXml(cleanXml);
 
         // Persist BPMN into classpath resources so it's the single source of truth
@@ -171,6 +181,10 @@ public class WorkflowService {
     public void deployWorkflowOnly(String bpmnXml) {
         // Sanitize and validate the XML first
         String cleanXml = sanitizeXml(bpmnXml);
+        
+        // Apply workflow conditions before validation and deployment
+        cleanXml = applyWorkflowConditions(cleanXml);
+        
         validateBpmnXml(cleanXml);
 
         // Persist BPMN into classpath resources so it's the single source of truth
@@ -328,6 +342,73 @@ public class WorkflowService {
         } catch (Exception e) {
             System.err.println("Failed to get process definition by ID: " + e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Apply workflow conditions to BPMN XML before deployment
+     * This ensures that all stored conditions are applied to the XML
+     */
+    public String applyWorkflowConditions(String bpmnXml) {
+        try {
+            // Get all gateway IDs that have conditions
+            List<String> gatewayIds = conditionService.getAllGatewayIds();
+            String modifiedXml = bpmnXml;
+            
+            // Ensure Flowable namespace is present
+            if (!modifiedXml.contains("xmlns:flowable=\"http://flowable.org/bpmn\"")) {
+                modifiedXml = modifiedXml.replace(
+                    "<bpmn:definitions",
+                    "<bpmn:definitions xmlns:flowable=\"http://flowable.org/bpmn\""
+                );
+            }
+            
+            // Apply conditions for each gateway
+            for (String gatewayId : gatewayIds) {
+                List<WorkflowCondition> conditions = conditionService.getConditionsByGateway(gatewayId);
+                
+                for (WorkflowCondition condition : conditions) {
+                    if (condition.getIsActive()) {
+                        try {
+                            // Check if the sequence flow already has a condition expression
+                            Pattern hasConditionPattern = Pattern.compile(
+                                "<bpmn:sequenceFlow id=\"" + condition.getFlowId() + "\"[^>]*>([^<]*<bpmn:conditionExpression[^>]*>)[^<]*(</bpmn:conditionExpression>)",
+                                Pattern.DOTALL
+                            );
+                            
+                            Matcher hasConditionMatcher = hasConditionPattern.matcher(modifiedXml);
+                            if (hasConditionMatcher.find()) {
+                                // Replace existing condition expression
+                                Pattern replacePattern = Pattern.compile(
+                                    "(<bpmn:sequenceFlow id=\"" + condition.getFlowId() + "\"[^>]*>)([^<]*<bpmn:conditionExpression[^>]*>)[^<]*(</bpmn:conditionExpression>)",
+                                    Pattern.DOTALL
+                                );
+                                String replacement = "$1$2" + condition.getConditionExpression() + "$3";
+                                modifiedXml = replacePattern.matcher(modifiedXml).replaceAll(replacement);
+                            } else {
+                                // Add new condition expression
+                                Pattern addPattern = Pattern.compile(
+                                    "(<bpmn:sequenceFlow id=\"" + condition.getFlowId() + "\"[^>]*>)",
+                                    Pattern.DOTALL
+                                );
+                                String replacement = "$1\n        <bpmn:conditionExpression xsi:type=\"bpmn:tFormalExpression\">" + 
+                                                   condition.getConditionExpression() + "</bpmn:conditionExpression>";
+                                modifiedXml = addPattern.matcher(modifiedXml).replaceAll(replacement);
+                            }
+                            
+                            System.out.println("Applied condition for flow " + condition.getFlowId() + ": " + condition.getConditionExpression());
+                        } catch (Exception e) {
+                            System.err.println("Error applying condition for flow " + condition.getFlowId() + ": " + e.getMessage());
+                        }
+                    }
+                }
+            }
+            
+            return modifiedXml;
+        } catch (Exception e) {
+            System.err.println("Failed to apply workflow conditions: " + e.getMessage());
+            // Return original XML if conditions can't be applied
+            return bpmnXml;
         }
     }
 }

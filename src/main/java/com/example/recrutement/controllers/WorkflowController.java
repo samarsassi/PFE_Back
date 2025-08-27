@@ -137,9 +137,16 @@ public class WorkflowController {
 
 
     @PostMapping("/deploy")
-    public ResponseEntity<String> deployWorkflow(@RequestBody String bpmnXml) {
+    public ResponseEntity<String> deployWorkflow(@RequestBody Map<String, String> payload) {
         try {
-            workflowService.deployAndStartWorkflow(bpmnXml);
+            String bpmnXml = payload.get("xml");
+            if (bpmnXml == null || bpmnXml.trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("XML is missing or empty");
+            }
+            // Apply conditions from DB
+            String xmlWithConditions = workflowService.applyWorkflowConditions(bpmnXml);
+            // Deploy without starting
+            workflowService.deployWorkflowOnly(xmlWithConditions);
             return ResponseEntity.ok("Workflow deployed successfully");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -270,6 +277,21 @@ public class WorkflowController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to start process by key: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Apply workflow conditions to existing BPMN XML
+     * This allows admins to update conditions without redeploying the entire workflow
+     */
+    @PostMapping("/apply-conditions")
+    public ResponseEntity<String> applyConditionsToBpmn(@RequestBody String bpmnXml) {
+        try {
+            String xmlWithConditions = workflowService.applyWorkflowConditions(bpmnXml);
+            return ResponseEntity.ok(xmlWithConditions);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to apply workflow conditions: " + e.getMessage());
         }
     }
 }
