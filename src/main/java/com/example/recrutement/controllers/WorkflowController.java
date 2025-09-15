@@ -1,6 +1,8 @@
 package com.example.recrutement.controllers;
 
+import com.example.recrutement.delegate.DelegateDescription;
 import com.example.recrutement.services.WorkflowService;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.springframework.core.io.ClassPathResource;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.delegate.JavaDelegate;
@@ -39,48 +41,24 @@ public class WorkflowController {
 
     @GetMapping("/delegates")
     public ResponseEntity<List<DelegateInfo>> getAvailableDelegates() {
-        List<DelegateInfo> delegates = new ArrayList<>();
-        delegates.add(new DelegateInfo(
-                "cvAnalysisDelegate",
-                "com.example.recrutement.delegate.CvAnalysisDelegate",
-                "Analyzes the candidate's CV using ScoringService and sets the cvScore process variable."
-        ));
-        delegates.add(new DelegateInfo(
-                "emailDelegate",
-                "com.example.recrutement.delegate.EmailDelegate",
-                "Sends HTML emails (confirmation, rejection, acceptance, interview invites) using EmailService."
-        ));
-        delegates.add(new DelegateInfo(
-                "sendChallengeDelegate",
-                "com.example.recrutement.delegate.SendChallengeDelegate",
-                "Assigns a coding challenge, updates Candidature and SoumissionDefi, and sends a notification email."
-        ));
-        delegates.add(new DelegateInfo(
-                "rejectCandidatureDelegate",
-                "com.example.recrutement.delegate.RejectCandidatureDelegate",
-                "Sets the Candidature status to REFUSEE for rejections (CV score, HR decision, or timeout)."
-        ));
-        delegates.add(new DelegateInfo(
-                "evaluateChallengeDelegate",
-                "com.example.recrutement.delegate.EvaluateChallengeDelegate",
-                "Evaluates the challenge submission and sets the challengePassed process variable."
-        ));
-        delegates.add(new DelegateInfo(
-                "sendInterviewInviteDelegate",
-                "com.example.recrutement.delegate.SendInterviewInviteDelegate",
-                "Sends an interview invitation email with the scheduled date."
-        ));
-
+        // 1. Find all beans that implement JavaDelegate
         Map<String, JavaDelegate> delegateBeans = applicationContext.getBeansOfType(JavaDelegate.class);
-        delegateBeans.forEach((beanName, bean) -> {
-            if (!delegates.stream().anyMatch(d -> d.getBeanName().equals(beanName))) {
-                delegates.add(new DelegateInfo(
-                        beanName,
-                        bean.getClass().getName(),
-                        "Auto-detected JavaDelegate: " + bean.getClass().getSimpleName()
-                ));
-            }
-        });
+
+        // 2. Convert them into DTOs
+        List<DelegateInfo> delegates = delegateBeans.entrySet().stream()
+                .map(entry -> {
+                    String beanName = entry.getKey();
+                    Class<?> clazz = entry.getValue().getClass();
+
+                    // Optionally check for @Component("name") or Javadoc for description
+                    String description = clazz.getSimpleName();
+
+                    if (clazz.isAnnotationPresent(DelegateDescription.class)) {
+                        description = clazz.getAnnotation(DelegateDescription.class).value();
+                    }
+                    return new DelegateInfo(beanName, clazz.getName(), description);
+                })
+                .toList();
 
         return ResponseEntity.ok(delegates);
     }
@@ -118,7 +96,7 @@ public class WorkflowController {
         } catch (Exception e) {
             try {
                 // Fallback: read static classpath resource if repository retrieval failed
-                ClassPathResource cpr = new ClassPathResource("processes/Recruitment_Workflow.bpmn20.xml");
+                ClassPathResource cpr = new ClassPathResource("processes/Recruitment_Workflow_LATEST.bpmn20.xml");
                 if (cpr.exists()) {
                     try (InputStream is = cpr.getInputStream()) {
                         String xml = new String(is.readAllBytes(), StandardCharsets.UTF_8)
@@ -176,24 +154,7 @@ public class WorkflowController {
         }
     }
 
-    @PostMapping("/start-cv-analysis")
-    public ResponseEntity<String> startCvAnalysisProcess(@RequestBody Map<String, Integer> request) {
-        try {
-            Integer candidatureId = request.get("candidatureId");
-            Integer offreEmploiId = request.get("offreEmploiId");
 
-            if (candidatureId == null || offreEmploiId == null) {
-                return ResponseEntity.badRequest()
-                        .body("Both candidatureId and offreEmploiId are required");
-            }
-
-            workflowService.startCvAnalysisProcess(candidatureId, offreEmploiId);
-            return ResponseEntity.ok("CV analysis process started successfully");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to start CV analysis process: " + e.getMessage());
-        }
-    }
 
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> getWorkflowStatus() {
@@ -242,10 +203,13 @@ public class WorkflowController {
         }
     }
 
+
+
+    @JsonPropertyOrder({ "className", "beanName", "description" })
     public static class DelegateInfo {
         private String beanName;
-        private String className;
         private String description;
+        private String className;
 
         public DelegateInfo(String beanName, String className, String description) {
             this.beanName = beanName;
@@ -253,10 +217,11 @@ public class WorkflowController {
             this.description = description;
         }
 
+        public String getDescription() { return description; }
         public String getBeanName() { return beanName; }
         public String getClassName() { return className; }
-        public String getDescription() { return description; }
     }
+
 
     @PostMapping("/start-by-key/{processKey}")
     public ResponseEntity<String> startByKey(@PathVariable String processKey, @RequestBody Map<String, Object> variables) {
@@ -279,6 +244,47 @@ public class WorkflowController {
                     .body("Failed to start process by key: " + e.getMessage());
         }
     }
+
+    // ------------------ HISTORY API ------------------
+
+    @GetMapping("/history")
+    public ResponseEntity<List<String>> getHistoryVersions() {
+        try {
+            List<String> historyFiles = workflowService.listHistoryVersions();
+            return ResponseEntity.ok(historyFiles);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(List.of("Failed to list BPMN history: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/history/{filename}")
+    public ResponseEntity<String> getHistoryVersion(@PathVariable String filename) {
+        try {
+            String xml = workflowService.getHistoryVersionXml(filename);
+            return ResponseEntity.ok(xml);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to load BPMN history version: " + e.getMessage());
+        }
+    }
+
+
+    @PostMapping("/history/deploy")
+    public ResponseEntity<String> deployHistoryVersion(@RequestBody Map<String, String> payload) {
+        String fileName = payload.get("fileName");
+        if (fileName == null || fileName.isBlank()) {
+            return ResponseEntity.badRequest().body("fileName is required");
+        }
+        try {
+            workflowService.deployHistoryVersion(fileName);
+            return ResponseEntity.ok("Deployed historical BPMN version: " + fileName);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to deploy historical BPMN version: " + e.getMessage());
+        }
+    }
+
 
     /**
      * Apply workflow conditions to existing BPMN XML

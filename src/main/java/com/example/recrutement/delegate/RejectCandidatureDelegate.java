@@ -18,6 +18,7 @@ public class RejectCandidatureDelegate implements JavaDelegate {
         Candidature candidature = candidatureRepo.findById(candidatureId)
                 .orElseThrow(() -> new RuntimeException("Candidature not found"));
         candidature.setStatut("REFUSEE");
+        candidature.setDecisionFinale("REFUSÉE");
         candidatureRepo.save(candidature);
     }
 }

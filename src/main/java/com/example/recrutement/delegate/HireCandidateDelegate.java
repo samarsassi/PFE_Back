@@ -17,21 +17,25 @@ public class HireCandidateDelegate implements JavaDelegate {
 
     @Override
     public void execute(DelegateExecution execution) {
+        System.out.println("[FLOWABLE] HireCandidateDelegate started");
+
         Integer candidatureId = (Integer) execution.getVariable("candidatureId");
         if (candidatureId == null) {
             throw new RuntimeException("Missing process variable 'candidatureId'");
         }
 
+        System.out.println("[FLOWABLE] Hiring candidature: " + candidatureId);
+
         Candidature candidature = candidatureRepo.findById(candidatureId)
                 .orElseThrow(() -> new RuntimeException("Candidature not found"));
 
-        candidature.setStatut("EMBAUCHE");
-        candidature.setDecisionFinale("HIRED");
+        candidature.setStatut("ACCEPTÉ");
+        candidature.setDecisionFinale("EMBAUCHE");
         candidatureRepo.save(candidature);
 
-        execution.setVariable("finalStatus", "HIRED");
+        execution.setVariable("finalStatus", "EMBAUCHE");
         execution.setVariable("hireDate", LocalDateTime.now());
+
+        System.out.println("[FLOWABLE] Candidate hired successfully");
     }
 }
-
-

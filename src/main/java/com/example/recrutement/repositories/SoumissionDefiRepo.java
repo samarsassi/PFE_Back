@@ -15,7 +15,7 @@ import java.util.List;
 public interface SoumissionDefiRepo extends JpaRepository<SoumissionDefi, Integer> {
     List<SoumissionDefi> findByCandidatureEmail(String email);
     List<SoumissionDefi> findByChallenge(Challenge challenge);
-
+List<SoumissionDefi> findByCandidature(Candidature candidature);
     @Modifying
     @Query("DELETE FROM SoumissionDefi s WHERE s.challenge.id = :challengeId")
     void deleteByChallenge(@Param("challengeId") Integer challengeId);

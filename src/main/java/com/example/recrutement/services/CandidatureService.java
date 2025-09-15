@@ -16,6 +16,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.domain.Pageable;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,22 +55,17 @@ public class CandidatureService {
     }
 
     public Page<Candidature> getAllCandidatures(Pageable pageable) {
+
+        Page<Candidature> statusdefi = candidatureRepository.findAllSimple(pageable);
+
+        for (Candidature candidature : statusdefi) {
+            updateExpiredDefiIfNeeded(candidature);
+        }
         try {
-            System.out.println("=== SERVICE START ===");
-            System.out.println("Pageable: " + pageable);
-
-            // Try the simplest approach first
             Page<Candidature> result = candidatureRepository.findAllSimple(pageable);
-
-            System.out.println("Query executed successfully");
-            System.out.println("Total elements: " + result.getTotalElements());
-            System.out.println("Content size: " + result.getContent().size());
-            System.out.println("=== SERVICE SUCCESS ===");
-
             return result;
 
         } catch (Exception e) {
-            System.err.println("=== SERVICE ERROR ===");
             System.err.println("Error message: " + e.getMessage());
             System.err.println("Error class: " + e.getClass().getSimpleName());
             if (e.getCause() != null) {
@@ -76,6 +78,12 @@ public class CandidatureService {
 
     // Get all candidatures
     public List<Candidature> getAllCandidaturesList() {
+
+        List<Candidature> result = candidatureRepository.findAllCandidature();
+
+        for (Candidature candidature : result) {
+            updateExpiredDefiIfNeeded(candidature);
+        }
         return candidatureRepository.findAllCandidature();
     }
 
@@ -85,6 +93,17 @@ public class CandidatureService {
     }
 
 
+    public void updateExpiredDefiIfNeeded(Candidature candidature) {
+        if (candidature.getStatutDefi() == Candidature.StatutDefi.ENVOYE && candidature.getDefiEnvoyeLe() != null) {
+            long hoursElapsed = ChronoUnit.HOURS.between(candidature.getDefiEnvoyeLe(), LocalDateTime.now());
+            if (hoursElapsed > 48) {
+                candidature.setStatutDefi(Candidature.StatutDefi.EXPIRE);
+                candidature.setDefiTermineLe(LocalDateTime.now());
+                candidatureRepository.save(candidature);
+                log.info("Candidature {} challenge expired after {} hours", candidature.getId(), hoursElapsed);
+            }
+        }
+    }
 
 
     // Update an existing candidature

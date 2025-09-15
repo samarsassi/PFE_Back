@@ -3,6 +3,7 @@ package com.example.recrutement.controllers;
 import com.example.recrutement.entities.Candidature;
 import com.example.recrutement.entities.Challenge;
 import com.example.recrutement.entities.OffreEmploi;
+import com.example.recrutement.entities.SoumissionDefi;
 import com.example.recrutement.repositories.CandidatureRepo;
 import com.example.recrutement.repositories.SoumissionDefiRepo;
 import com.example.recrutement.services.CandidatureService;
@@ -10,6 +11,8 @@ import com.example.recrutement.services.OffreEmploiService;
 import com.example.recrutement.services.ScoringService;
 import jakarta.transaction.Transactional;
 import org.flowable.engine.RuntimeService;
+import org.flowable.engine.runtime.Execution;
+import org.flowable.engine.runtime.ProcessInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,10 +46,10 @@ public class CandidatureController {
     private static final Logger logger = LoggerFactory.getLogger(CandidatureController.class);
 
     public CandidatureController(CandidatureService candidatureService,
-            CandidatureRepo candidatureRepo,
-            SoumissionDefiRepo soumissionDefiRepo,
-            ScoringService scoringService,
-            OffreEmploiService offreEmploiService) {
+                                 CandidatureRepo candidatureRepo,
+                                 SoumissionDefiRepo soumissionDefiRepo,
+                                 ScoringService scoringService,
+                                 OffreEmploiService offreEmploiService) {
         this.candidatureService = candidatureService;
         this.candidatureRepo = candidatureRepo;
         this.soumissionDefiRepo = soumissionDefiRepo;
@@ -63,15 +66,13 @@ public class CandidatureController {
             @RequestParam("linkedInProfile") String linkedin,
             @RequestParam("portfolioURL") String portfolio,
             @RequestParam(value = "coverLetter", required = false) String coverLetter,
-            @RequestParam(value = "statut", defaultValue = "EN ATTENTE") String statut,
-            @RequestParam(value = "statutDefi", defaultValue = "AUCUN") String statutDefi,
-            @RequestParam(value = "statusEntretien", defaultValue = "AUCUN") String statusEntretien,
             @RequestParam("cv") MultipartFile cv,
             @RequestParam("cvUrl") String cvUrl,
             @RequestParam("offreEmploiId") Integer offreEmploiId,
             Authentication connectedUser) {
 
         try {
+            // 1️⃣ Create candidature object
             Candidature candidature = new Candidature();
             candidature.setNom(nom);
             candidature.setEmail(email);
@@ -80,42 +81,61 @@ public class CandidatureController {
             candidature.setLinkedInProfile(linkedin);
             candidature.setPortfolioURL(portfolio);
             candidature.setCoverLetter(coverLetter);
-            candidature.setStatut(statut);
-            candidature.setStatutDefi(Candidature.StatutDefi.valueOf(statutDefi));
+            candidature.setStatut("EN ATTENTE");
+            candidature.setStatutDefi(Candidature.StatutDefi.AUCUN);
             candidature.setStatutEntretien(Candidature.StatutEnt.AUCUN);
             candidature.setCvUrl(cvUrl);
 
+            // Save CV file
             String fileName = saveFile(cv);
             candidature.setCv(fileName);
 
+            // 2️⃣ Get related job offer
             OffreEmploi offre = offreEmploiService.getOffreEmploiById(offreEmploiId)
                     .orElseThrow(() -> new RuntimeException("OffreEmploi not found with ID: " + offreEmploiId));
 
-            // Create candidature first
-            Candidature savedCandidature = candidatureService.createCandidature(candidature, offreEmploiId,
-                    connectedUser);
+            // 3️⃣ Save candidature first
+            Candidature savedCandidature = candidatureService.createCandidature(candidature, offreEmploiId, connectedUser);
 
-            Map<String, Object> variables = new HashMap<>();
-            variables.put("candidatureId", savedCandidature.getId());
-            variables.put("offreEmploiId", offreEmploiId);
-            // Prefer taking candidate email from saved entity
-            variables.put("candidateEmail", savedCandidature.getEmail());
-            // Optional vars; user tasks can have null assignees if not configured
-            // You can set these via configuration or offer owner later
-            // variables.put("hrEmail", "hr@example.com");
-            // variables.put("interviewerEmail", "interviewer@example.com");
+            // 4️⃣ Start workflow asynchronously and save process instance ID
+            try {
+                boolean workflowAlreadyStarted = runtimeService.createProcessInstanceQuery()
+                        .processDefinitionKey("Process_1_1757601711956")
+                        .variableValueEquals("candidatureId", savedCandidature.getId())
+                        .count() > 0;
 
-            // Start the workflow automatically with available variables
-            // Key matches the current BPMN process id used in deployments
-            runtimeService.startProcessInstanceByKey("Process_1", variables);
+                if (!workflowAlreadyStarted) {
+                    Map<String, Object> variables = new HashMap<>();
+                    variables.put("candidatureId", savedCandidature.getId());
+                    variables.put("offreEmploiId", offreEmploiId);
+                    variables.put("candidateEmail", savedCandidature.getEmail());
+                    variables.put("statutDefi", "AUCUN");
 
+                    // Start process instance
+                    ProcessInstance instance = runtimeService.startProcessInstanceByKey(
+                            "Process_1_1757601711956",
+                            variables
+                    );
+
+                    // Save the runtime process instance ID in candidature
+                    savedCandidature.setProcessInstanceId(instance.getId());
+                    candidatureRepo.save(savedCandidature);
+
+                    log.info("Workflow started for candidature {}, instanceId={}", savedCandidature.getId(), instance.getId());
+                }
+            } catch (Exception e) {
+                log.error("Workflow failed to start, but candidature was saved: {}", e.getMessage());
+            }
+
+            // 5️⃣ Return saved candidature immediately
             return ResponseEntity.ok(savedCandidature);
 
         } catch (Exception e) {
-            log.error("Error creating candidature: {}", e.getMessage());
+            log.error("Error creating candidature: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
 
     private String saveFile(MultipartFile file) {
         // Set the path to save the file
@@ -154,9 +174,6 @@ public class CandidatureController {
             @RequestParam(defaultValue = "10") int size) {
 
         try {
-            System.out.println("=== CONTROLLER START ===");
-            System.out.println("Received request - page: " + page + ", size: " + size);
-
             // Create simple pageable without sorting first
             Pageable pageable = PageRequest.of(page, size);
             Page<Candidature> result = candidatureService.getAllCandidatures(pageable);
@@ -169,13 +186,9 @@ public class CandidatureController {
             response.put("size", result.getSize());
             response.put("number", result.getNumber());
 
-            System.out.println("=== CONTROLLER SUCCESS ===");
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            System.err.println("=== CONTROLLER ERROR ===");
-            System.err.println("Error message: " + e.getMessage());
-            System.err.println("Error class: " + e.getClass().getSimpleName());
             if (e.getCause() != null) {
                 System.err.println("Cause: " + e.getCause().getMessage());
             }
@@ -220,8 +233,6 @@ public class CandidatureController {
     @Transactional
     public ResponseEntity<String> deleteCandidature(@PathVariable Integer id) {
         try {
-            log.info("Before delete - Candidature ID: {}", id);
-
             // Delete connected SoumissionDefi if mawjouda
             soumissionDefiRepo.deleteByCandidatureId(id);
             soumissionDefiRepo.flush();
@@ -229,9 +240,6 @@ public class CandidatureController {
             // Delete candidature itself
             candidatureRepo.deleteByIdNative(id);
             candidatureRepo.flush();
-
-            log.info("After delete - should be gone now");
-
             return ResponseEntity.ok("Candidature deleted successfully");
         } catch (Exception e) {
             log.error("Error deleting candidature: {}", e.getMessage(), e);
@@ -250,22 +258,37 @@ public class CandidatureController {
     }
 
     @PostMapping("/{id}/submit-challenge")
-    public ResponseEntity<?> submitChallenge(@PathVariable Integer id,
+    public ResponseEntity<?> submitChallenge(
+            @PathVariable Integer id,
             @RequestBody com.example.recrutement.dto.ChallengeSubmissionDTO payload) {
+
+        // 1️⃣ Fetch the candidature
         var candidatureOpt = candidatureRepo.findById(id);
         if (candidatureOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         var candidature = candidatureOpt.get();
-        if (candidature.getDefi() == null) {
-            return ResponseEntity.badRequest().body("No challenge assigned to this candidature");
+
+        // 2️⃣ Check if the challenge has expired
+        candidatureService.updateExpiredDefiIfNeeded(candidature);
+        if (candidature.getStatutDefi() == Candidature.StatutDefi.EXPIRE) {
+            return ResponseEntity.badRequest().body("Challenge has expired and cannot be submitted.");
         }
+
+        // 3️⃣ Ensure there is a challenge assigned
+        if (candidature.getDefi() == null) {
+            return ResponseEntity.badRequest().body("No challenge assigned to this candidature.");
+        }
+
+        // 4️⃣ Get or create the submission
         var soumission = candidature.getSoumissionDefi();
         if (soumission == null) {
             soumission = new com.example.recrutement.entities.SoumissionDefi();
             soumission.setCandidature(candidature);
             soumission.setChallenge(candidature.getDefi());
         }
+
+        // 5️⃣ Update the submission
         soumission.setCode(payload.getCode());
         soumission.setLangage(payload.getLangage());
         soumission.setResultatsExecution(payload.getResultatsExecution());
@@ -276,14 +299,87 @@ public class CandidatureController {
         soumissionDefiRepo.save(soumission);
         candidature.setSoumissionDefi(soumission);
 
+        // 6️⃣ Update the candidature
         candidature.setDefiTermineLe(java.time.LocalDateTime.now());
         candidature.setScoreDefi(payload.getScore());
         candidature.setStatutDefi(com.example.recrutement.entities.Candidature.StatutDefi.TERMINE);
         candidatureRepo.save(candidature);
 
-        return ResponseEntity.ok(java.util.Map.of(
-                "message", "Submission recorded",
+        // 7️⃣ Trigger the BPMN signal to continue the process
+        if (candidature.getProcessInstanceId() != null) {
+            Execution execution = runtimeService.createExecutionQuery()
+                    .processInstanceId(candidature.getProcessInstanceId())
+                    .signalEventSubscriptionName("ChallengeSubmittedSignal")
+                    .singleResult();
+
+            if (execution != null) {
+                runtimeService.signalEventReceived(
+                        "ChallengeSubmittedSignal",
+                        execution.getId(),
+                        Map.of("statutDefi", "TERMINE")
+                );
+                log.info("Signal sent to execution {} of process instance {}",
+                        execution.getId(), candidature.getProcessInstanceId());
+            } else {
+                log.warn("No active execution found for candidature {}, signal not sent", candidature.getId());
+            }
+        }
+
+        // 8️⃣ Return response
+        return ResponseEntity.ok(Map.of(
+                "message", "Submission recorded and workflow notified",
                 "score", payload.getScore(),
-                "pointsTotal", payload.getPointsTotal()));
+                "pointsTotal", payload.getPointsTotal()
+        ));
+    }
+
+
+
+    @PostMapping("/{id}/reanalyze")
+    public ResponseEntity<?> reanalyzeCandidature(
+            @PathVariable Integer id,
+            @RequestParam(defaultValue = "scoreOnly") String mode) {
+
+        log.info("Reanalyzing candidature {} with mode {}", id, mode);
+
+        Candidature candidature = candidatureRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Candidature not found"));
+
+        OffreEmploi offre = candidature.getOffreEmploi();
+        if (offre == null) {
+            return ResponseEntity.badRequest().body("No job offer linked to candidature.");
+        }
+
+        if ("fullProcess".equalsIgnoreCase(mode)) {
+            // Reset candidature
+            candidature.resetForReanalysis();
+            candidatureRepo.save(candidature);
+
+            // Delete existing workflow
+            runtimeService.createProcessInstanceQuery()
+                    .variableValueEquals("candidatureId", candidature.getId())
+                    .list()
+                    .forEach(instance -> runtimeService.deleteProcessInstance(instance.getId(), "Reanalyzed by admin"));
+
+            // Handle SoumissionDefi safely (Option 1)
+            soumissionDefiRepo.deleteByCandidatureId(candidature.getId());
+
+            // Start workflow again
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("candidatureId", candidature.getId());
+            variables.put("offreEmploiId", offre.getId());
+            variables.put("candidateEmail", candidature.getEmail());
+            variables.put("statutDefi", "AUCUN"); // Initialize with default value
+
+            runtimeService.startProcessInstanceByKey("Process_1", variables);
+            log.info("Workflow restarted for candidature {}", candidature.getId());
+
+        } else if ("scoreOnly".equalsIgnoreCase(mode)) {
+            // Only recalculate the score
+            scoringService.scoreCandidature(candidature, offre);
+            log.info("Score recalculated for candidature {}", candidature.getId());
+        }
+
+        return ResponseEntity.ok(candidatureRepo.findById(id).get());
     }
 }
