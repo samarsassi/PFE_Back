@@ -93,6 +93,13 @@ public class CandidatureService {
     }
 
 
+    public void updateExpiredDefi(Candidature candidature) {
+        if (candidature.getStatutDefi() == Candidature.StatutDefi.ENVOYE) {
+                candidature.setStatutDefi(Candidature.StatutDefi.EXPIRE);
+                candidatureRepository.save(candidature);
+        }
+    }
+
     public void updateExpiredDefiIfNeeded(Candidature candidature) {
         if (candidature.getStatutDefi() == Candidature.StatutDefi.ENVOYE && candidature.getDefiEnvoyeLe() != null) {
             long hoursElapsed = ChronoUnit.HOURS.between(candidature.getDefiEnvoyeLe(), LocalDateTime.now());

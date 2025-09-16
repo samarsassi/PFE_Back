@@ -11,7 +11,6 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.mail.MessagingException;
 import java.time.LocalDateTime;
@@ -32,12 +31,14 @@ public class SendChallengeDelegate implements JavaDelegate {
     private EmailService emailService;
 
     @Override
-    @Transactional
     public void execute(DelegateExecution execution) {
         System.out.println("[FLOWABLE] SendChallengeDelegate started");
 
         Integer candidatureId = (Integer) execution.getVariable("candidatureId");
+        Integer challengeId = (Integer) execution.getVariable("challengeId");
         String candidateEmail = (String) execution.getVariable("candidateEmail");
+
+        System.out.println("[FLOWABLE] Processing candidature: " + candidatureId);
 
         // Load candidature
         Candidature candidature = candidatureRepo.findById(candidatureId)
@@ -47,14 +48,25 @@ public class SendChallengeDelegate implements JavaDelegate {
             candidateEmail = candidature.getEmail();
         }
 
-        // Pick a challenge (first available)
-        Challenge challenge = challengeRepo.findAll().stream().findFirst()
-                .orElseThrow(() -> new RuntimeException("No challenge available"));
+        // Load or fallback challenge
+        Challenge challenge;
+        if (challengeId != null) {
+            challenge = challengeRepo.findById(challengeId)
+                    .orElseThrow(() -> new RuntimeException("Challenge not found"));
+        } else {
+            challenge = challengeRepo.findAll().stream().findFirst()
+                    .orElseThrow(() -> new RuntimeException("No challenge available to assign"));
+        }
 
-        // Assign challenge to candidature
+        // Update candidature with challenge
         candidature.setDefi(challenge);
         candidature.setDefiEnvoyeLe(LocalDateTime.now());
         candidature.setStatutDefi(Candidature.StatutDefi.ENVOYE);
+        candidatureRepo.save(candidature);
+
+        // The gateway will wait for this to be updated to TERMINE or EXPIRE
+        execution.setVariable("statutDefi", "EN_ATTENTE");
+        System.out.println("[FLOWABLE] Set statutDefi to EN_ATTENTE, waiting for challenge completion");
 
         // Create SoumissionDefi
         SoumissionDefi soumission = new SoumissionDefi();
@@ -62,30 +74,25 @@ public class SendChallengeDelegate implements JavaDelegate {
         soumission.setCandidature(candidature);
         soumission.setStatut(SoumissionDefi.StatutSoumission.En_evaluation);
         soumission.setSoumisLe(LocalDateTime.now());
+        String createdBy = (String) execution.getVariable("createdBy");
+        soumission.setCreePar(createdBy); // assuming creePar is a String
+
+        candidature.setSoumissionDefi(soumission);
         soumissionDefiRepo.save(soumission);
 
-        // Link submission to candidature
-        candidature.setSoumissionDefi(soumission);
+        // Send email
+        String emailBody = emailService.buildChallengeAssignmentEmail(
+                candidature.getNom(),
+                challenge.getTitre(),
+                "http://localhost:4200/main"
+        );
 
-        // Persist the updated candidature (with challenge and submission)
-        candidatureRepo.save(candidature);
-
-        // Set Flowable process variable
-        execution.setVariable("statutDefi", "ENVOYE");
-        System.out.println("[FLOWABLE] Set statutDefi to ENVOYE, waiting for challenge completion");
-
-        // Send email notification
         try {
-            String emailBody = emailService.buildChallengeAssignmentEmail(
-                    candidature.getNom(),
-                    challenge.getTitre(),
-                    "http://localhost:4200/main"
-            );
             emailService.sendHtmlEmail(candidateEmail, "Nouveau défi technique attribué", emailBody);
             System.out.println("[FLOWABLE] Challenge email sent successfully");
         } catch (MessagingException e) {
             System.err.println("[FLOWABLE] Failed to send email: " + e.getMessage());
-            throw new RuntimeException("Failed to send challenge email", e);
+            throw new RuntimeException("Failed to send challenge email: " + e.getMessage());
         }
 
         System.out.println("[FLOWABLE] SendChallengeDelegate completed");

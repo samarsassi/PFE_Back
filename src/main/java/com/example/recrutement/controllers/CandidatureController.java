@@ -95,39 +95,27 @@ public class CandidatureController {
                     .orElseThrow(() -> new RuntimeException("OffreEmploi not found with ID: " + offreEmploiId));
 
             // 3️⃣ Save candidature first
-            Candidature savedCandidature = candidatureService.createCandidature(candidature, offreEmploiId, connectedUser);
+            Candidature savedCandidature = candidatureService.createCandidature(
+                    candidature, offreEmploiId, connectedUser);
 
-            // 4️⃣ Start workflow asynchronously and save process instance ID
-            try {
-                boolean workflowAlreadyStarted = runtimeService.createProcessInstanceQuery()
-                        .processDefinitionKey("Process_1_1757601711956")
-                        .variableValueEquals("candidatureId", savedCandidature.getId())
-                        .count() > 0;
+            // 4️⃣ Only start workflow if not already started
+            boolean workflowAlreadyStarted = runtimeService.createProcessInstanceQuery()
+                    .processDefinitionKey("Process_1")
+                    .variableValueEquals("candidatureId", savedCandidature.getId())
+                    .count() > 0;
 
-                if (!workflowAlreadyStarted) {
-                    Map<String, Object> variables = new HashMap<>();
-                    variables.put("candidatureId", savedCandidature.getId());
-                    variables.put("offreEmploiId", offreEmploiId);
-                    variables.put("candidateEmail", savedCandidature.getEmail());
-                    variables.put("statutDefi", "AUCUN");
+            if (!workflowAlreadyStarted) {
+                Map<String, Object> variables = new HashMap<>();
+                variables.put("candidatureId", savedCandidature.getId());
+                variables.put("offreEmploiId", offreEmploiId);
+                variables.put("candidateEmail", savedCandidature.getEmail());
+                variables.put("statutDefi", "AUCUN"); // initial value
 
-                    // Start process instance
-                    ProcessInstance instance = runtimeService.startProcessInstanceByKey(
-                            "Process_1_1757601711956",
-                            variables
-                    );
-
-                    // Save the runtime process instance ID in candidature
-                    savedCandidature.setProcessInstanceId(instance.getId());
-                    candidatureRepo.save(savedCandidature);
-
-                    log.info("Workflow started for candidature {}, instanceId={}", savedCandidature.getId(), instance.getId());
-                }
-            } catch (Exception e) {
-                log.error("Workflow failed to start, but candidature was saved: {}", e.getMessage());
+                variables.put("createdBy", connectedUser.getName()); // or getUsername() depending on Spring Security
+                runtimeService.startProcessInstanceByKey("Process_1", variables);
+                log.info("Workflow started for candidature {}", savedCandidature.getId());
             }
 
-            // 5️⃣ Return saved candidature immediately
             return ResponseEntity.ok(savedCandidature);
 
         } catch (Exception e) {
@@ -135,6 +123,8 @@ public class CandidatureController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+
 
 
     private String saveFile(MultipartFile file) {
@@ -305,25 +295,13 @@ public class CandidatureController {
         candidature.setStatutDefi(com.example.recrutement.entities.Candidature.StatutDefi.TERMINE);
         candidatureRepo.save(candidature);
 
-        // 7️⃣ Trigger the BPMN signal to continue the process
-        if (candidature.getProcessInstanceId() != null) {
-            Execution execution = runtimeService.createExecutionQuery()
-                    .processInstanceId(candidature.getProcessInstanceId())
-                    .signalEventSubscriptionName("ChallengeSubmittedSignal")
-                    .singleResult();
-
-            if (execution != null) {
-                runtimeService.signalEventReceived(
-                        "ChallengeSubmittedSignal",
-                        execution.getId(),
-                        Map.of("statutDefi", "TERMINE")
-                );
-                log.info("Signal sent to execution {} of process instance {}",
-                        execution.getId(), candidature.getProcessInstanceId());
-            } else {
-                log.warn("No active execution found for candidature {}, signal not sent", candidature.getId());
-            }
-        }
+        // 7️⃣ Broadcast the signal to continue the BPMN process
+        runtimeService.signalEventReceived(
+                "ChallengeSubmittedSignal",
+                Map.of("statutDefi", "TERMINE",
+                        "candidatureId", candidature.getId())
+        );
+        log.info("Signal 'ChallengeSubmittedSignal' sent for candidature {}", candidature.getId());
 
         // 8️⃣ Return response
         return ResponseEntity.ok(Map.of(
@@ -332,7 +310,6 @@ public class CandidatureController {
                 "pointsTotal", payload.getPointsTotal()
         ));
     }
-
 
 
     @PostMapping("/{id}/reanalyze")

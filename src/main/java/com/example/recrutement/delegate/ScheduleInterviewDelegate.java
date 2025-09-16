@@ -40,7 +40,8 @@ public class ScheduleInterviewDelegate implements JavaDelegate {
 
         // 1️⃣ Get workflow variables
         Integer candidatureId = (Integer) execution.getVariable("candidatureId");
-        log.info("ScheduleInterviewDelegate invoked for candidatureId={}", candidatureId);
+        log.info("ScheduleInterviewDelegate invoked for candidatureId={} processInstanceId={}",
+                candidatureId, execution.getProcessInstanceId());
 
         if (candidatureId == null) {
             throw new RuntimeException("Missing required workflow variable: candidatureId");
@@ -55,7 +56,23 @@ public class ScheduleInterviewDelegate implements JavaDelegate {
             throw new RuntimeException("Challenge submission date not found for candidature " + candidatureId);
         }
 
-        // 3️⃣ Calculate interview date = submission date + 2 business days
+        // 🔒 3️⃣ Check if interview already exists
+        if (candidature.getEntretien() != null) {
+            Entretien existing = candidature.getEntretien();
+            log.warn("[FLOWABLE] Interview already exists for candidature {} (ID={}), skipping creation",
+                    candidatureId, existing.getId());
+
+            // Push existing values into workflow
+            execution.setVariable("entretienId", existing.getId());
+            execution.setVariable("interviewDate",
+                    existing.getDateEntretien().toInstant()
+                            .atZone(ZoneId.systemDefault())
+                            .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+            execution.setVariable("zegoLink", existing.getLien());
+            return;
+        }
+
+        // 4️⃣ Calculate interview date = submission date + 2 business days
         LocalDateTime interviewDate = soumission.getSoumisLe();
         int businessDaysAdded = 0;
         while (businessDaysAdded < 2) {
@@ -66,11 +83,11 @@ public class ScheduleInterviewDelegate implements JavaDelegate {
             }
         }
 
-        // 4️⃣ Generate meeting link
+        // 5️⃣ Generate meeting link
         String roomId = UUID.randomUUID().toString().substring(0, 6);
         String zegoLink = "https://jobportal.com/meeting?roomID=" + roomId;
 
-        // 5️⃣ Create and save Entretien
+        // 6️⃣ Create and save Entretien
         Entretien entretien = new Entretien();
         entretien.setDateEntretien(Date.from(interviewDate.atZone(ZoneId.systemDefault()).toInstant()));
         entretien.setLien(zegoLink);
@@ -79,12 +96,12 @@ public class ScheduleInterviewDelegate implements JavaDelegate {
 
         Entretien savedEntretien = entretienRepository.save(entretien);
 
-        // 6️⃣ Update candidature
+        // 7️⃣ Update candidature
         candidature.setEntretien(savedEntretien);
         candidature.setStatutEntretien(Candidature.StatutEnt.ENVOYE);
         candidatureRepository.save(candidature);
 
-        // 7️⃣ Push variables into workflow
+        // 8️⃣ Push variables into workflow
         String formattedDate = interviewDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
         execution.setVariable("entretienId", savedEntretien.getId());
         execution.setVariable("interviewDate", formattedDate);
