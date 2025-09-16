@@ -1,5 +1,6 @@
 package com.example.recrutement.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -17,6 +18,9 @@ import java.util.List;
 public class Challenge extends BaseEntity {
 
     private String titre;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     private Integer languageId;
@@ -25,12 +29,16 @@ public class Challenge extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Difficulte difficulte;
 
-    private Integer tempslimite;     // en minutes
-    private Integer memoirelimite;   // en KB
+    private Integer tempslimite; // en minutes
+    private Integer memoirelimite; // en KB
 
-    @OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = true,fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JsonIgnoreProperties("challenge")
     private List<TestCase> testCases;
+
+    @OneToMany(mappedBy = "defi", fetch = FetchType.LAZY)
+    @JsonIgnore // or use @JsonIgnoreProperties("candidatures") if needed
+    private List<Candidature> candidatures;
 
     @Lob
     private String codeDepart;
@@ -126,5 +134,13 @@ public class Challenge extends BaseEntity {
 
     public void setStatut(Statut statut) {
         this.statut = statut;
+    }
+
+    public List<Candidature> getCandidatures() {
+        return candidatures;
+    }
+
+    public void setCandidatures(List<Candidature> candidatures) {
+        this.candidatures = candidatures;
     }
 }

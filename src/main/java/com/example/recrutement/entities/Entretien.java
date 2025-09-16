@@ -1,12 +1,12 @@
 package com.example.recrutement.entities;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.io.Serializable;
 import java.util.Date;
 
 @Getter
@@ -14,21 +14,68 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-public class Entretien implements Serializable {
+public class Entretien extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 
     private Date dateEntretien;
     private String commentaireRH;
-    private String resultat; // ACCEPTÉ, REJETÉ
+    public enum ResultatEntretien {
+        ACCEPTE, REFUSEE, EN_ATTENTE
+    }
+    @Enumerated(EnumType.STRING)
+    private ResultatEntretien resultat;
 
-    @OneToOne
-    @JoinColumn(name = "candidature_id")
+    //@Column(length = 500)
+    private String lien;
+
+
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "candidature_id", foreignKey = @ForeignKey(name = "FK_ENTRETIEN_CANDIDATURE"))
+    @JsonBackReference
     private Candidature candidature;
+
 
     //@ManyToOne
    // @JoinColumn(name = "rh_id")
     //private User menePar; // Led by RH
+
+    public Date getDateEntretien() {
+        return dateEntretien;
+    }
+
+    public void setDateEntretien(Date dateEntretien) {
+        this.dateEntretien = dateEntretien;
+    }
+
+    public String getCommentaireRH() {
+        return commentaireRH;
+    }
+
+    public void setCommentaireRH(String commentaireRH) {
+        this.commentaireRH = commentaireRH;
+    }
+
+    public ResultatEntretien getResultat() {
+        return resultat;
+    }
+
+    public void setResultat(ResultatEntretien resultat) {
+        this.resultat = resultat;
+    }
+
+    public Candidature getCandidature() {
+        return candidature;
+    }
+
+    public void setCandidature(Candidature candidature) {
+        this.candidature = candidature;
+    }
+
+    public String getLien() {
+        return lien;
+    }
+
+    public void setLien(String lien) {
+        this.lien = lien;
+    }
 }

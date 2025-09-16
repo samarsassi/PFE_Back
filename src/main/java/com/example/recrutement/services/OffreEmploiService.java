@@ -3,11 +3,18 @@ package com.example.recrutement.services;
 import com.example.recrutement.entities.Candidature;
 import com.example.recrutement.entities.OffreEmploi;
 import com.example.recrutement.repositories.OffreEmploiRepo;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -113,4 +120,47 @@ public class OffreEmploiService implements IOffreEmploiService{
             throw new RuntimeException("OffreEmploi not found with id: " + id);
         }
     }
+
+    public List<OffreEmploi> searchOffers(String keyword) {
+        return offreEmploiRepository.searchByKeyword(keyword.toLowerCase());
+    }
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    public List<OffreEmploi> searchByKeywords(List<String> keywords) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<OffreEmploi> query = cb.createQuery(OffreEmploi.class);
+        Root<OffreEmploi> root = query.from(OffreEmploi.class);
+
+        List<Predicate> predicates = new ArrayList<>();
+
+        for (String keyword : keywords) {
+            String likeKeyword = "%" + keyword.toLowerCase() + "%";
+
+            predicates.add(cb.like(cb.lower(root.get("titre")), likeKeyword));
+            // Don't use lower() on description if it's a CLOB
+            predicates.add(cb.like(root.get("description"), likeKeyword));
+            predicates.add(cb.like(cb.lower(root.get("contrat")), likeKeyword));
+            predicates.add(cb.like(cb.lower(root.get("salaire")), likeKeyword));
+            predicates.add(cb.like(cb.lower(root.get("niveauExperience")), likeKeyword));
+            predicates.add(cb.like(cb.lower(root.get("localisation")), likeKeyword));
+            // For salaire, if numeric, handle differently or skip
+        }
+
+
+        query.select(root).where(cb.or(predicates.toArray(new Predicate[0])));
+        return entityManager.createQuery(query).getResultList();
+    }
+
+    //stats
+    public long countOffers() {
+        return offreEmploiRepository.count();
+    }
+
+      public double getAverageSalary() {
+        // Implement query to calculate average salary from DB offers
+       return offreEmploiRepository.getAverageSalary();
+     }
+
 }
