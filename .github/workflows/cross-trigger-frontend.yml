@@ -1,0 +1,26 @@
+name: Orchestrate Frontend CI after Backend
+
+on:
+  workflow_run:
+    workflows: ["CI - Backend Tests"]
+    types:
+      - completed
+
+jobs:
+  trigger-frontend:
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger frontend repo workflow via repository_dispatch
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.FRONTEND_REPO_PAT }}
+          repository: samarsassi/PFE_Beta
+          event-type: backend-ci-passed
+          client-payload: |
+            {"backend_sha": "${{ github.event.workflow_run.head_sha }}",
+             "backend_repo": "${{ github.repository }}",
+             "ref": "${{ github.event.workflow_run.head_branch }}"}
+
+

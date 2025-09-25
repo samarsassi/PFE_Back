@@ -39,3 +39,4 @@ public class HireCandidateDelegate implements JavaDelegate {
         System.out.println("[FLOWABLE] Candidate hired successfully");
     }
 }
+

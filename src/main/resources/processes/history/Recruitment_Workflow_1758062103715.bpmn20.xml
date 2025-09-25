@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:flowable="http://flowable.org/bpmn" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_1" isExecutable="true">
+    <bpmn:serviceTask id="send_challenge" name="send_challenge" flowable:delegateExpression="${sendChallengeDelegate}">
+      <bpmn:incoming>Flow_cv_good</bpmn:incoming>
+      <bpmn:outgoing>Flow_18hpfp6</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_18hpfp6" sourceRef="send_challenge" targetRef="Event_0cp2hrn"/>
+    <bpmn:intermediateCatchEvent id="Event_0cp2hrn">
+      <bpmn:incoming>Flow_18hpfp6</bpmn:incoming>
+      <bpmn:incoming>Flow_default</bpmn:incoming>
+      <bpmn:outgoing>Flow_0g484uf</bpmn:outgoing>
+      <bpmn:signalEventDefinition id="SignalEventDefinition_0ll0uoq" signalRef="Signal_2gblukc"/>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:exclusiveGateway id="Gateway_interview" default="Flow_default">
+      <bpmn:incoming>Flow_0g484uf</bpmn:incoming>
+      <bpmn:outgoing>Flow_challenge_ok</bpmn:outgoing>
+      <bpmn:outgoing>Flow_challenge_no</bpmn:outgoing>
+      <bpmn:outgoing>Flow_default</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_0g484uf" sourceRef="Event_0cp2hrn" targetRef="Gateway_interview"/>
+    <bpmn:sequenceFlow id="Flow_challenge_ok" sourceRef="Gateway_interview" targetRef="Activity_1lxwyzn" flowable:conditionExpression="${statutDefi== 'TERMINE'}"/>
+    <bpmn:sequenceFlow id="Flow_challenge_no" sourceRef="Gateway_interview" targetRef="Activity_0dclrbj" flowable:conditionExpression="${statutDefi == 'EXPIRE'}"/>
+    <bpmn:endEvent id="Event_1oh19i5">
+      <bpmn:incoming>Flow_0iem4bk</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0iem4bk" sourceRef="Activity_0dclrbj" targetRef="Event_1oh19i5"/>
+    <bpmn:serviceTask id="Activity_1lxwyzn" name="interview" flowable:delegateExpression="${scheduleInterviewDelegate}">
+      <bpmn:incoming>Flow_challenge_ok</bpmn:incoming>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_0dclrbj" name="reject" flowable:delegateExpression="${rejectCandidatureDelegate}">
+      <bpmn:incoming>Flow_challenge_no</bpmn:incoming>
+      <bpmn:incoming>Flow_cv_bad</bpmn:incoming>
+      <bpmn:outgoing>Flow_0iem4bk</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_challenge">
+      <bpmn:incoming>Flow_0t3llp0</bpmn:incoming>
+      <bpmn:outgoing>Flow_cv_good</bpmn:outgoing>
+      <bpmn:outgoing>Flow_cv_bad</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_cv_good" sourceRef="Gateway_challenge" targetRef="send_challenge"/>
+    <bpmn:sequenceFlow id="Flow_cv_bad" sourceRef="Gateway_challenge" targetRef="Activity_0dclrbj"/>
+    <bpmn:startEvent id="Event_0x6kezq">
+      <bpmn:outgoing>Flow_03oibgu</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_03oibgu" sourceRef="Event_0x6kezq" targetRef="Activity_1ypx8qr"/>
+    <bpmn:sequenceFlow id="Flow_0t3llp0" sourceRef="Activity_1ypx8qr" targetRef="Gateway_challenge"/>
+    <bpmn:serviceTask id="Activity_1ypx8qr" name="Cv_analysis" flowable:delegateExpression="${CvAnalysisDelegate}">
+      <bpmn:incoming>Flow_03oibgu</bpmn:incoming>
+      <bpmn:outgoing>Flow_0t3llp0</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_default" sourceRef="Gateway_interview" targetRef="Event_0cp2hrn"/>
+  </bpmn:process>
+  <bpmn:signal id="Signal_2gblukc" name="ChallengeSubmittedSignal"/>
+  <bpmn:message id="Message_166v5s5" name="eeeeeend"/>
+  <bpmn:message id="Message_3l6onhn" name="en_attente"/>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="Activity_1tpcfsl_di" bpmnElement="send_challenge">
+        <dc:Bounds x="-30" y="-20" width="100" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0rvobhd_di" bpmnElement="Event_0cp2hrn">
+        <dc:Bounds x="112" y="2" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1008j81_di" bpmnElement="Gateway_interview" isMarkerVisible="true">
+        <dc:Bounds x="175" y="95" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1oh19i5_di" bpmnElement="Event_1oh19i5">
+        <dc:Bounds x="442" y="162" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0s0sciz_di" bpmnElement="Activity_1lxwyzn">
+        <dc:Bounds x="300" y="80" width="100" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1btznx4_di" bpmnElement="Activity_0dclrbj">
+        <dc:Bounds x="300" y="190" width="100" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0214slg_di" bpmnElement="Gateway_challenge" isMarkerVisible="true">
+        <dc:Bounds x="-5" y="95" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0iqr2zh_di" bpmnElement="Event_0x6kezq">
+        <dc:Bounds x="-238" y="102" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0p7acoq_di" bpmnElement="Activity_1ypx8qr">
+        <dc:Bounds x="-150" y="80" width="100" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_18hpfp6_di" bpmnElement="Flow_18hpfp6">
+        <di:waypoint x="70" y="20"/>
+        <di:waypoint x="112" y="20"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0g484uf_di" bpmnElement="Flow_0g484uf">
+        <di:waypoint x="130" y="38"/>
+        <di:waypoint x="130" y="120"/>
+        <di:waypoint x="175" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_124w8ht_di" bpmnElement="Flow_challenge_ok">
+        <di:waypoint x="225" y="120"/>
+        <di:waypoint x="300" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1xnac5z_di" bpmnElement="Flow_challenge_no">
+        <di:waypoint x="200" y="145"/>
+        <di:waypoint x="200" y="220"/>
+        <di:waypoint x="300" y="220"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0iem4bk_di" bpmnElement="Flow_0iem4bk">
+        <di:waypoint x="400" y="230"/>
+        <di:waypoint x="460" y="230"/>
+        <di:waypoint x="460" y="198"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1d0fuij_di" bpmnElement="Flow_cv_good">
+        <di:waypoint x="20" y="95"/>
+        <di:waypoint x="20" y="60"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0k98gmx_di" bpmnElement="Flow_cv_bad">
+        <di:waypoint x="20" y="145"/>
+        <di:waypoint x="20" y="240"/>
+        <di:waypoint x="300" y="240"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_03oibgu_di" bpmnElement="Flow_03oibgu">
+        <di:waypoint x="-202" y="120"/>
+        <di:waypoint x="-150" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0t3llp0_di" bpmnElement="Flow_0t3llp0">
+        <di:waypoint x="-50" y="120"/>
+        <di:waypoint x="-5" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1llb0j5_di" bpmnElement="Flow_default">
+        <di:waypoint x="200" y="95"/>
+        <di:waypoint x="200" y="20"/>
+        <di:waypoint x="148" y="20"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

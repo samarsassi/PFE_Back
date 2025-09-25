@@ -1,0 +1,50 @@
+name: CI - Backend Tests
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: recrutement2
+        options: >-
+          --health-cmd "mysqladmin ping -proot || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      - name: Run tests (test profile)
+        env:
+          SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/recrutement2?createDatabaseIfNotExist=true
+          SPRING_DATASOURCE_USERNAME: root
+          SPRING_DATASOURCE_PASSWORD: root
+        run: mvn -B -ntp test -Dspring.profiles.active=test
+
+      - name: Upload surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-surefire-reports
+          path: |
+            target/surefire-reports/**
+            target/failsafe-reports/**
+
+

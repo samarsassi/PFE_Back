@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:flowable="http://flowable.org/bpmn" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_1" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Start">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="CV_Analysis_Task" name="CV Analysis" flowable:delegateExpression="${cvAnalysisDelegate}">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="CV_Score_Dec" name="CV Score Decision">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Send_Challenge_Task" name="Send Challenge" flowable:delegateExpression="${sendChallengeDelegate}">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Reject_Candidature_Task" name="Reject Candidature" flowable:delegateExpression="${rejectCandidatureDelegate}">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:incoming>Flow_13</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_1" name="Flow_1" sourceRef="StartEvent_1" targetRef="CV_Analysis_Task" />
+    <bpmn:sequenceFlow id="Flow_2" name="Flow_2" sourceRef="CV_Analysis_Task" targetRef="CV_Score_Dec" />
+    <bpmn:sequenceFlow id="Flow_3" name="Flow_3" sourceRef="CV_Score_Dec" targetRef="Send_Challenge_Task">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${cvScore &gt;= 3}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_4" name="Flow_4" sourceRef="CV_Score_Dec" targetRef="Reject_Candidature_Task">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${cvScore &lt; 3}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:exclusiveGateway id="Challenge_condition" name="Challenge_condition">
+      <bpmn:incoming>Flow_1kfyeu4</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_7" name="Flow_7" sourceRef="Challenge_condition" targetRef="Reject_Candidature_Task" />
+    <bpmn:sequenceFlow id="Flow_9" name="Flow_9" sourceRef="Challenge_condition" targetRef="Schedule_Interview" />
+    <bpmn:sequenceFlow id="Flow_5" name="Flow_5" sourceRef="Send_Challenge_Task" targetRef="Challenge_evanluation" />
+    <bpmn:serviceTask id="Challenge_evanluation" name="Challenge evanluation" flowable:delegateExpression="${evaluateChallengeDelegate}">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_1kfyeu4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_1kfyeu4" name="Flow_6" sourceRef="Challenge_evanluation" targetRef="Challenge_condition" />
+    <bpmn:userTask id="Schedule_Interview" name="Schedule Interview" flowable:assignee="${hrUser}">
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_10" name="Flow_10" sourceRef="Schedule_Interview" targetRef="Send_Interview" />
+    <bpmn:serviceTask id="Send_Interview" name="Send Interview" flowable:delegateExpression="${sendInterviewInviteDelegate}">
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_11" name="Flow_11" sourceRef="Send_Interview" targetRef="Evaluate_Interview" />
+    <bpmn:userTask id="Evaluate_Interview" name="Evaluate Interview" flowable:assignee="${hrUser}">
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+      <bpmn:outgoing>Flow_12</bpmn:outgoing>
+      <bpmn:outgoing>Flow_13</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="End_Rejected" name="End Rejected">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_8" name="Flow_8" sourceRef="Reject_Candidature_Task" targetRef="End_Rejected" />
+    <bpmn:endEvent id="End_Hired" name="End Hired">
+      <bpmn:incoming>Flow_12</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_12" name="Flow_12" sourceRef="Evaluate_Interview" targetRef="End_Hired" />
+    <bpmn:sequenceFlow id="Flow_13" name="Flow_13" sourceRef="Evaluate_Interview" targetRef="Reject_Candidature_Task" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="158" y="145" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CV_Analysis_Task_di" bpmnElement="CV_Analysis_Task">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="265" y="115" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CV_Score_Decision_di" bpmnElement="CV_Score_Dec" isMarkerVisible="true">
+        <dc:Bounds x="395" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="425" y="146" width="50" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Send_Challenge_Task_di" bpmnElement="Send_Challenge_Task">
+        <dc:Bounds x="500" y="40" width="100" height="80" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="515" y="75" width="70" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_198shf5_di" bpmnElement="Challenge_condition" isMarkerVisible="true">
+        <dc:Bounds x="825" y="55" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="807" y="17.5" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0ve8d4h_di" bpmnElement="Challenge_evanluation">
+        <dc:Bounds x="670" y="40" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_04n0s4a_di" bpmnElement="Schedule_Interview">
+        <dc:Bounds x="940" y="40" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0esnd3c_di" bpmnElement="Send_Interview">
+        <dc:Bounds x="1110" y="40" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0do654z_di" bpmnElement="Evaluate_Interview">
+        <dc:Bounds x="1280" y="40" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1pfntn9_di" bpmnElement="End_Hired">
+        <dc:Bounds x="1452" y="62" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1445" y="105" width="52" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Reject_Candidature_Task_di" bpmnElement="Reject_Candidature_Task">
+        <dc:Bounds x="970" y="280" width="100" height="80" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="975" y="315" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1k1g6fo_di" bpmnElement="End_Rejected">
+        <dc:Bounds x="1182" y="302" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1165" y="278" width="70" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="196" y="102" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="395" y="120" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="349" y="102" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="420" y="95" />
+        <di:waypoint x="420" y="80" />
+        <di:waypoint x="500" y="80" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="431" y="62" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="420" y="145" />
+        <di:waypoint x="420" y="320" />
+        <di:waypoint x="970" y="320" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="705" y="303" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_04j7btg_di" bpmnElement="Flow_7">
+        <di:waypoint x="850" y="105" />
+        <di:waypoint x="850" y="190" />
+        <di:waypoint x="1000" y="190" />
+        <di:waypoint x="1000" y="280" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="914" y="203" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_13pt519_di" bpmnElement="Flow_9">
+        <di:waypoint x="875" y="80" />
+        <di:waypoint x="940" y="80" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="889" y="62" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0wzbh40_di" bpmnElement="Flow_5">
+        <di:waypoint x="600" y="80" />
+        <di:waypoint x="670" y="80" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="617" y="62" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1kfyeu4_di" bpmnElement="Flow_1kfyeu4">
+        <di:waypoint x="770" y="80" />
+        <di:waypoint x="825" y="80" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="779" y="62" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0hu09qu_di" bpmnElement="Flow_10">
+        <di:waypoint x="1040" y="80" />
+        <di:waypoint x="1110" y="80" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1053" y="62" width="44" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1i9ke7m_di" bpmnElement="Flow_11">
+        <di:waypoint x="1210" y="80" />
+        <di:waypoint x="1280" y="80" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1224" y="62" width="43" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0k8e81k_di" bpmnElement="Flow_8">
+        <di:waypoint x="1070" y="320" />
+        <di:waypoint x="1182" y="320" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1076" y="320" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_05lc4ar_di" bpmnElement="Flow_12">
+        <di:waypoint x="1380" y="80" />
+        <di:waypoint x="1452" y="80" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1395" y="62" width="44" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1nr870v_di" bpmnElement="Flow_13">
+        <di:waypoint x="1330" y="120" />
+        <di:waypoint x="1330" y="190" />
+        <di:waypoint x="1040" y="190" />
+        <di:waypoint x="1040" y="280" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1163" y="172" width="44" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
