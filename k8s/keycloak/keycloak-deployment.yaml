@@ -36,6 +36,14 @@ spec:
           value: "http://keycloak-service:8080"
         - name: KC_HOSTNAME_ADMIN_URL
           value: "http://keycloak-service:8080"
+        - name: KC_DB
+          value: "mysql" 
+        - name: KC_DB_URL
+          value: "jdbc:mysql://database-service.default.svc.cluster.local:3306/recrutement2"
+        - name: KC_DB_USERNAME
+          value: "root"
+        - name: KC_DB_PASSWORD
+          value: "root"
         resources:
           requests:
             memory: "512Mi"
