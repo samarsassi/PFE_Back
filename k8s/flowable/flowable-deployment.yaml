@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flowable-deployment
+  namespace: default
+  labels:
+    app: flowable
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flowable
+  template:
+    metadata:
+      labels:
+        app: flowable
+    spec:
+      containers:
+      - name: flowable
+        image: docker.io/samarsassi/flowable-all-in-one:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: FLOWABLE_IDM_APP_ADMIN_USERNAME
+          value: "admin"
+        - name: FLOWABLE_IDM_APP_ADMIN_PASSWORD
+          value: "test"
+        - name: SPRING_DATASOURCE_DRIVER
+          value: "org.mariadb.jdbc.Driver"
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:mariadb://database-service:3306/recrutement2"
+        - name: SPRING_DATASOURCE_USERNAME
+          value: "root"
+        - name: SPRING_DATASOURCE_PASSWORD
+          value: "root"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10

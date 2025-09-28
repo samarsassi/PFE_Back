@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database-deployment
+  namespace: default
+  labels:
+    app: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database
+  template:
+    metadata:
+      labels:
+        app: database
+    spec:
+      containers:
+      - name: mariadb
+        image: docker.io/samarsassi/mariadb:latest
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "root"
+        - name: MYSQL_DATABASE
+          value: "recrutement2"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - mariadb-admin
+            - --protocol=tcp
+            - -uroot
+            - -proot
+            - ping
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - mariadb-admin
+            - --protocol=tcp
+            - -uroot
+            - -proot
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        volumeMounts:
+        - name: database-data
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: database-data
+        emptyDir: {}
