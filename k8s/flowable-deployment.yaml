@@ -33,13 +33,6 @@ spec:
           value: "root"
         - name: SPRING_DATASOURCE_PASSWORD
           value: "root"
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "250m"
-          limits:
-            memory: "1Gi"
-            cpu: "500m"
         livenessProbe:
           tcpSocket:
             port: 8080
@@ -50,4 +43,3 @@ spec:
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
-

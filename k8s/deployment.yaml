@@ -13,6 +13,10 @@ spec:
       labels:
         app: backend
     spec:
+      initContainers:
+      - name: wait-for-db
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z database-service 3306; do echo waiting for db; sleep 5; done;']
       containers:
       - name: backend
         image: docker.io/samarsassi/springboot-app:latest
@@ -33,13 +37,6 @@ spec:
           value: "http://keycloak-service:8080/realms/PFE"
         - name: LOGGING_FILE_NAME
           value: "/app/logs/application.log"
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "250m"
-          limits:
-            memory: "2Gi"
-            cpu: "500m"
         livenessProbe:
           httpGet:
             path: /actuator/health

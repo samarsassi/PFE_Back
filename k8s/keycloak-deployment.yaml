@@ -15,6 +15,10 @@ spec:
       labels:
         app: keycloak
     spec:
+      initContainers:
+      - name: wait-for-db
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z database-service 3306; do echo waiting for db; sleep 5; done;']
       containers:
       - name: keycloak
         image: docker.io/samarsassi/keycloak:24.0.2
@@ -37,35 +41,17 @@ spec:
         - name: KC_HOSTNAME_ADMIN_URL
           value: "http://keycloak-service:8080"
         - name: KC_DB
-          value: "mariadb" 
+          value: "mariadb"
         - name: KC_DB_URL
           value: "jdbc:mariadb://database-service.default.svc.cluster.local:3306/recrutement2"
         - name: KC_DB_USERNAME
           value: "root"
         - name: KC_DB_PASSWORD
           value: "root"
-        resources:
-          requests:
-            memory: "1Gi"
-            cpu: "250m"
-          limits:
-            memory: "2Gi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 120
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 8080
-          initialDelaySeconds: 90
-          periodSeconds: 10
         volumeMounts:
         - name: keycloak-data
           mountPath: /opt/keycloak/data
       volumes:
       - name: keycloak-data
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: keycloak-pvc
